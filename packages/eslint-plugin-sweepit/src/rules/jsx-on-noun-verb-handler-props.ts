@@ -113,8 +113,8 @@ const DEFAULT_NOUNS = [
 ] as const;
 
 interface RuleOptions {
-  allowedVerbs?: string[];
-  allowedNouns?: string[];
+  extendVerbs?: string[];
+  extendNouns?: string[];
 }
 
 function mergeAllowedValues(
@@ -200,13 +200,13 @@ const rule: Rule.RuleModule = {
       {
         type: 'object',
         properties: {
-          allowedVerbs: {
+          extendVerbs: {
             type: 'array',
             items: {
               type: 'string',
             },
           },
-          allowedNouns: {
+          extendNouns: {
             type: 'array',
             items: {
               type: 'string',
@@ -219,11 +219,9 @@ const rule: Rule.RuleModule = {
   },
   create(context) {
     const options = (context.options[0] as RuleOptions | undefined) ?? {};
-    const verbs = mergeAllowedValues(DEFAULT_VERBS, options.allowedVerbs);
+    const verbs = mergeAllowedValues(DEFAULT_VERBS, options.extendVerbs);
     verbs.sort((a, b) => b.length - a.length);
-    const nouns = new Set<string>(
-      mergeAllowedValues(DEFAULT_NOUNS, options.allowedNouns),
-    );
+    const nouns = new Set<string>(mergeAllowedValues(DEFAULT_NOUNS, options.extendNouns));
 
     return {
       JSXAttribute(node: Rule.Node) {

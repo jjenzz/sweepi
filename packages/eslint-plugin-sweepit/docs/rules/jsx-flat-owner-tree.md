@@ -16,10 +16,31 @@ Deep parent chains make control flow harder to track and spread ownership across
 
 ## Options
 
-This rule accepts one option:
+This rule accepts one optional object.
 
-- `allowedChainDepth` (integer, minimum `1`, default `2`): Maximum allowed chain depth before reporting.  
-  Example: `allowedChainDepth: 2` reports depth `3+`; `allowedChainDepth: 4` reports depth `5+`.
+### allowedChainDepth
+
+Type: `integer`\
+Minimum: `1`\
+Default: `2`
+
+Maximum allowed chain depth before reporting.
+
+- `allowedChainDepth: 2` reports depth `3+`
+- `allowedChainDepth: 4` reports depth `5+`
+
+```json
+{
+  "rules": {
+    "sweepit/jsx-flat-owner-tree": [
+      "error",
+      {
+        "allowedChainDepth": 2
+      }
+    ]
+  }
+}
+```
 
 ## Examples
 

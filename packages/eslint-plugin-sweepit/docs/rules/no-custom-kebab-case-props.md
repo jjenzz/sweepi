@@ -16,8 +16,26 @@ Props containing hyphens (kebab-case) are disallowed unless they are native HTML
 
 ## Options
 
-This rule accepts one optional object to add custom allowed kebab-case props while keeping
-`aria-*` and `data-*` as defaults.
+This rule accepts one optional object.
+
+### extendPrefixes
+
+Type: `string[]`\
+Default: `[]` (extends built-in defaults)
+
+Additional kebab-case prefixes to allow. This list is merged with built-in allowed prefixes:
+
+- `aria-`
+- `data-`
+
+### allowedProps
+
+Type: `string[]`\
+Default: `[]`
+
+Exact kebab-case prop names to allow.
+
+The example below allows the `x-` prefix and one exact prop:
 
 ```json
 {
@@ -25,16 +43,13 @@ This rule accepts one optional object to add custom allowed kebab-case props whi
     "sweepit/no-custom-kebab-case-props": [
       "error",
       {
-        "allowedPrefixes": ["x-"],
+        "extendPrefixes": ["x-"],
         "allowedProps": ["feature-flag-enabled"]
       }
     ]
   }
 }
 ```
-
-- `allowedPrefixes`: Additional kebab-case prefixes to allow (e.g. `x-`).
-- `allowedProps`: Exact kebab-case prop names to allow.
 
 ## Examples
 

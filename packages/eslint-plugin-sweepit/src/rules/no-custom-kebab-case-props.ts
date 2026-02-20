@@ -14,7 +14,7 @@ interface JSXNamespacedName {
 const DEFAULT_ALLOWED_KEBAB_PREFIXES = ['aria-', 'data-'];
 
 interface RuleOptions {
-  allowedPrefixes?: string[];
+  extendPrefixes?: string[];
   allowedProps?: string[];
 }
 
@@ -40,7 +40,7 @@ function isKebabCase(name: string): boolean {
 function resolveRuleOptions(context: Rule.RuleContext): ResolvedRuleOptions {
   const option = (context.options[0] as RuleOptions | undefined) ?? {};
   const allowedPrefixes = Array.from(
-    new Set([...DEFAULT_ALLOWED_KEBAB_PREFIXES, ...(option.allowedPrefixes ?? [])]),
+    new Set([...DEFAULT_ALLOWED_KEBAB_PREFIXES, ...(option.extendPrefixes ?? [])]),
   );
   const allowedProps = new Set(option.allowedProps ?? []);
 
@@ -70,7 +70,7 @@ const rule: Rule.RuleModule = {
       {
         type: 'object',
         properties: {
-          allowedPrefixes: {
+          extendPrefixes: {
             type: 'array',
             items: { type: 'string' },
           },

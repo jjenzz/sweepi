@@ -27,7 +27,7 @@ describe('no-custom-kebab-case-props', () => {
       '<Component myCustomProp="value" />',
       {
         code: '<Component x-foo="value" />',
-        options: [{ allowedPrefixes: ['x-'] }],
+        options: [{ extendPrefixes: ['x-'] }],
       },
       {
         code: '<Component feature-flag-enabled />',
@@ -35,7 +35,7 @@ describe('no-custom-kebab-case-props', () => {
       },
       {
         code: '<Component aria-label="Close" x-foo="value" />',
-        options: [{ allowedPrefixes: ['x-'] }],
+        options: [{ extendPrefixes: ['x-'] }],
       },
     ],
     invalid: [

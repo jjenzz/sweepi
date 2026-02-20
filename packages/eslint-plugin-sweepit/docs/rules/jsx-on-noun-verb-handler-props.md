@@ -16,19 +16,37 @@ This makes discovery and autocomplete easier than mixed verb-first naming.
 
 ## Options
 
-This rule accepts an optional object:
+This rule accepts one optional object.
+
+### extendVerbs
+
+Type: `string[]`\
+Default: `[]` (extends built-in defaults)
+
+Additional verbs to allow when checking `on{Noun}{Verb}` ordering.
+
+### extendNouns
+
+Type: `string[]`\
+Default: `[]` (extends built-in defaults)
+
+Additional nouns to allow when checking `on{Noun}{Verb}` ordering.
+
+The example below adds domain-specific values:
 
 ```json
 {
-  "allowedVerbs": ["Change", "Disable", "Disabled"],
-  "allowedNouns": ["Value", "Feature", "Item"]
+  "rules": {
+    "sweepit/jsx-on-noun-verb-handler-props": [
+      "error",
+      {
+        "extendVerbs": ["Change", "Disable", "Disabled"],
+        "extendNouns": ["Value", "Feature", "Item"]
+      }
+    ]
+  }
 }
 ```
-
-- `allowedVerbs`: extends the default verb list.
-- `allowedNouns`: extends the default noun list.
-
-Use options when your domain uses verbs or nouns not covered by defaults.
 
 ## Examples
 
@@ -62,7 +80,7 @@ With custom options:
 
 ```tsx
 // eslint rule options:
-// { allowedVerbs: ['Archived'], allowedNouns: ['Item'] }
+// { extendVerbs: ['Archived'], extendNouns: ['Item'] }
 <Item onItemArchived={handleArchived} />
 ```
 
