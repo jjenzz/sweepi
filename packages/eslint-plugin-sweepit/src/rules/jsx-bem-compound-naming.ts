@@ -91,9 +91,10 @@ const rule: Rule.RuleModule = {
           name: Rule.Node;
         };
         const nameNode = opening.name;
-        if (nameNode.type !== 'JSXIdentifier') return;
+        const typedNameNode = nameNode as unknown as { type?: string; name?: string };
+        if (typedNameNode.type !== 'JSXIdentifier' || !typedNameNode.name) return;
 
-        const name = (nameNode as unknown as { name: string }).name;
+        const name = typedNameNode.name;
         if (!isPascalCase(name)) return;
 
         if (COMMON_PART_NAMES.has(name)) {

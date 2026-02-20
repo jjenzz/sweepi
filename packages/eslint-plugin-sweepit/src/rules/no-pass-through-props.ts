@@ -143,13 +143,16 @@ function isDirectJsxAttributeForward(
   parent: Rule.Node | null,
   parentMap: WeakMap<object, ParentRef>,
 ): boolean {
-  if (!parent || parent.type !== 'JSXExpressionContainer') return false;
+  if (!parent) return false;
+  const typedParent = parent as unknown as { type?: string };
+  if (typedParent.type !== 'JSXExpressionContainer') return false;
   const container = parent as unknown as { expression?: Rule.Node };
   if (container.expression !== node) return false;
 
   const ref = parentMap.get(parent as unknown as object);
   if (!ref?.parent) return false;
-  return ref.parent.type === 'JSXAttribute';
+  const typedGrandParent = ref.parent as unknown as { type?: string };
+  return typedGrandParent.type === 'JSXAttribute';
 }
 
 function checkComponent(

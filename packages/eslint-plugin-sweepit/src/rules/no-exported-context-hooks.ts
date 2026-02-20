@@ -42,7 +42,7 @@ const rule: Rule.RuleModule = {
       }
 
       if (declaration?.type === 'VariableDeclaration') {
-        const decl = declaration as { declarations?: Rule.Node[] };
+        const decl = declaration as unknown as { declarations?: Rule.Node[] };
         for (const entry of decl.declarations ?? []) {
           const d = entry as { id?: Rule.Node };
           if (d.id?.type !== 'Identifier') continue;
@@ -54,7 +54,7 @@ const rule: Rule.RuleModule = {
 
       for (const specifier of exp.specifiers ?? []) {
         if (specifier.type !== 'ExportSpecifier') continue;
-        const s = specifier as {
+        const s = specifier as unknown as {
           local?: Rule.Node;
           exported?: Rule.Node;
         };

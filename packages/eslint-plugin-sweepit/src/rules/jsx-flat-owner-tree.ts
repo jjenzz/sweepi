@@ -14,16 +14,20 @@ function isPascalCase(name: string): boolean {
   return first >= 'A' && first <= 'Z';
 }
 
-function getCustomJsxName(node: Rule.Node): string | null {
-  if (node.type === 'JSXIdentifier') {
-    const name = (node as unknown as { name: string }).name;
+function getCustomJsxName(node: Rule.Node | null | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as unknown as { type?: string; name?: string; object?: Rule.Node };
+
+  if (typedNode.type === 'JSXIdentifier' && typedNode.name) {
+    const name = typedNode.name;
     return isPascalCase(name) ? name : null;
   }
 
-  if (node.type === 'JSXMemberExpression') {
-    const member = node as unknown as { object: Rule.Node };
-    if (member.object.type === 'JSXIdentifier') {
-      const object = member.object as unknown as { name: string };
+  if (typedNode.type === 'JSXMemberExpression' && typedNode.object) {
+    const member = typedNode as unknown as { object: Rule.Node };
+    const typedObject = member.object as unknown as { type?: string; name?: string };
+    if (typedObject.type === 'JSXIdentifier' && typedObject.name) {
+      const object = typedObject as { name: string };
       return isPascalCase(object.name) ? object.name : null;
     }
   }
@@ -36,8 +40,9 @@ function collectSelfClosingCustomJsxNames(
   names: Set<string>,
 ): void {
   if (!node) return;
+  const typedNode = node as unknown as { type?: string };
 
-  if (node.type === 'JSXElement') {
+  if (typedNode.type === 'JSXElement') {
     const element = node as unknown as {
       openingElement: { name: Rule.Node; selfClosing?: boolean };
       children?: Rule.Node[];
@@ -48,16 +53,18 @@ function collectSelfClosingCustomJsxNames(
     }
 
     for (const child of element.children ?? []) {
-      if (child.type !== 'JSXElement' && child.type !== 'JSXFragment') continue;
+      const typedChild = child as unknown as { type?: string };
+      if (typedChild.type !== 'JSXElement' && typedChild.type !== 'JSXFragment') continue;
       collectSelfClosingCustomJsxNames(child, names);
     }
     return;
   }
 
-  if (node.type === 'JSXFragment') {
+  if (typedNode.type === 'JSXFragment') {
     const fragment = node as unknown as { children?: Rule.Node[] };
     for (const child of fragment.children ?? []) {
-      if (child.type !== 'JSXElement' && child.type !== 'JSXFragment') continue;
+      const typedChild = child as unknown as { type?: string };
+      if (typedChild.type !== 'JSXElement' && typedChild.type !== 'JSXFragment') continue;
       collectSelfClosingCustomJsxNames(child, names);
     }
   }
@@ -66,17 +73,19 @@ function collectSelfClosingCustomJsxNames(
 function getSelfClosingCustomChildren(body: Rule.Node | null | undefined): Set<string> {
   const names = new Set<string>();
   if (!body) return names;
+  const typedBody = body as unknown as { type?: string };
 
-  if (body.type === 'JSXElement' || body.type === 'JSXFragment') {
+  if (typedBody.type === 'JSXElement' || typedBody.type === 'JSXFragment') {
     collectSelfClosingCustomJsxNames(body, names);
-  } else if (body.type === 'BlockStatement') {
+  } else if (typedBody.type === 'BlockStatement') {
     const block = body as unknown as { body?: Rule.Node[] };
     for (const statement of block.body ?? []) {
       if (statement.type !== 'ReturnStatement') continue;
       const returnStatement = statement as unknown as { argument?: Rule.Node | null };
       const argument = returnStatement.argument;
       if (!argument) continue;
-      if (argument.type !== 'JSXElement' && argument.type !== 'JSXFragment') continue;
+      const typedArgument = argument as unknown as { type?: string };
+      if (typedArgument.type !== 'JSXElement' && typedArgument.type !== 'JSXFragment') continue;
       collectSelfClosingCustomJsxNames(argument, names);
     }
   }
