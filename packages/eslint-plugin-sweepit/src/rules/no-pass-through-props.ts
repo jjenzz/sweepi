@@ -107,7 +107,11 @@ function isDefinitionLikeIdentifier(
   if (!parent) return false;
 
   if (parent.type === 'Property') {
-    const property = parent as unknown as { key?: Rule.Node; value?: Rule.Node; computed?: boolean };
+    const property = parent as unknown as {
+      key?: Rule.Node;
+      value?: Rule.Node;
+      computed?: boolean;
+    };
     if (property.key === node && !property.computed) return true;
     if (property.value === node && property.value?.type === 'Identifier') {
       const value = property.value as unknown as { name: string };

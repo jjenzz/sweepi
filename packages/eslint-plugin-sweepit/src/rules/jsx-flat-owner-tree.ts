@@ -1,6 +1,12 @@
 import type { Rule } from 'eslint';
 
-const MAX_CUSTOM_COMPONENT_DEPTH = 2;
+const MIN_REPORTED_CHAIN_DEPTH = 3;
+
+interface ComponentRecord {
+  name: string;
+  node: Rule.Node;
+  selfClosingCustomChildren: Set<string>;
+}
 
 function isPascalCase(name: string): boolean {
   if (name.length === 0) return false;
@@ -8,121 +14,112 @@ function isPascalCase(name: string): boolean {
   return first >= 'A' && first <= 'Z';
 }
 
-function isCustomJsxName(node: Rule.Node): boolean {
+function getCustomJsxName(node: Rule.Node): string | null {
   if (node.type === 'JSXIdentifier') {
     const name = (node as unknown as { name: string }).name;
-    return isPascalCase(name);
+    return isPascalCase(name) ? name : null;
   }
 
   if (node.type === 'JSXMemberExpression') {
     const member = node as unknown as { object: Rule.Node };
     if (member.object.type === 'JSXIdentifier') {
       const object = member.object as unknown as { name: string };
-      return isPascalCase(object.name);
+      return isPascalCase(object.name) ? object.name : null;
     }
   }
 
-  return false;
+  return null;
 }
 
-function getChildrenDepth(node: Rule.Node, currentDepth: number): number {
+function collectSelfClosingCustomJsxNames(
+  node: Rule.Node | null | undefined,
+  names: Set<string>,
+): void {
+  if (!node) return;
+
   if (node.type === 'JSXElement') {
     const element = node as unknown as {
-      openingElement: { name: Rule.Node };
+      openingElement: { name: Rule.Node; selfClosing?: boolean };
       children?: Rule.Node[];
     };
-    const nextDepth = currentDepth + (isCustomJsxName(element.openingElement.name) ? 1 : 0);
-    let maxDepth = nextDepth;
+    if (element.openingElement.selfClosing) {
+      const customName = getCustomJsxName(element.openingElement.name);
+      if (customName) names.add(customName);
+    }
 
     for (const child of element.children ?? []) {
       if (child.type !== 'JSXElement' && child.type !== 'JSXFragment') continue;
-      const childDepth = getChildrenDepth(child, nextDepth);
-      if (childDepth > maxDepth) maxDepth = childDepth;
+      collectSelfClosingCustomJsxNames(child, names);
     }
-    return maxDepth;
+    return;
   }
 
   if (node.type === 'JSXFragment') {
     const fragment = node as unknown as { children?: Rule.Node[] };
-    let maxDepth = currentDepth;
     for (const child of fragment.children ?? []) {
       if (child.type !== 'JSXElement' && child.type !== 'JSXFragment') continue;
-      const childDepth = getChildrenDepth(child, currentDepth);
-      if (childDepth > maxDepth) maxDepth = childDepth;
-    }
-    return maxDepth;
-  }
-
-  return currentDepth;
-}
-
-function hasChildrenParam(params: Rule.Node[] | undefined): boolean {
-  const firstParam = (params ?? [])[0];
-  if (!firstParam || firstParam.type !== 'ObjectPattern') return false;
-  const objectPattern = firstParam as unknown as { properties?: Rule.Node[] };
-
-  for (const property of objectPattern.properties ?? []) {
-    if (property.type !== 'Property') continue;
-    const prop = property as unknown as { key?: Rule.Node; value?: Rule.Node };
-    if (!prop.key || !prop.value) continue;
-    if (prop.key.type === 'Identifier') {
-      const key = prop.key as unknown as { name: string };
-      if (key.name === 'children') return true;
-    }
-    if (prop.value.type === 'Identifier') {
-      const value = prop.value as unknown as { name: string };
-      if (value.name === 'children') return true;
+      collectSelfClosingCustomJsxNames(child, names);
     }
   }
-  return false;
 }
 
-function getMaxReturnDepth(body: Rule.Node | null | undefined): number {
-  if (!body) return 0;
+function getSelfClosingCustomChildren(body: Rule.Node | null | undefined): Set<string> {
+  const names = new Set<string>();
+  if (!body) return names;
 
   if (body.type === 'JSXElement' || body.type === 'JSXFragment') {
-    return getChildrenDepth(body, 0);
+    collectSelfClosingCustomJsxNames(body, names);
+  } else if (body.type === 'BlockStatement') {
+    const block = body as unknown as { body?: Rule.Node[] };
+    for (const statement of block.body ?? []) {
+      if (statement.type !== 'ReturnStatement') continue;
+      const returnStatement = statement as unknown as { argument?: Rule.Node | null };
+      const argument = returnStatement.argument;
+      if (!argument) continue;
+      if (argument.type !== 'JSXElement' && argument.type !== 'JSXFragment') continue;
+      collectSelfClosingCustomJsxNames(argument, names);
+    }
   }
 
-  if (body.type !== 'BlockStatement') return 0;
-  const block = body as unknown as { body?: Rule.Node[] };
-  let maxDepth = 0;
-
-  for (const statement of block.body ?? []) {
-    if (statement.type !== 'ReturnStatement') continue;
-    const returnStatement = statement as unknown as { argument?: Rule.Node | null };
-    const argument = returnStatement.argument;
-    if (!argument) continue;
-    if (argument.type !== 'JSXElement' && argument.type !== 'JSXFragment') continue;
-
-    const depth = getChildrenDepth(argument, 0);
-    if (depth > maxDepth) maxDepth = depth;
-  }
-
-  return maxDepth;
+  return names;
 }
 
-function checkComponentDepth(
-  context: Rule.RuleContext,
-  name: string | null | undefined,
-  params: Rule.Node[] | undefined,
-  body: Rule.Node | null | undefined,
-  reportNode: Rule.Node,
-): void {
-  if (!name || !isPascalCase(name)) return;
-  if (hasChildrenParam(params)) return;
+function computeChainDepth(
+  componentName: string,
+  components: Map<string, ComponentRecord>,
+  memo: Map<string, number>,
+  visiting: Set<string>,
+): number {
+  const cached = memo.get(componentName);
+  if (cached != null) return cached;
 
-  const depth = getMaxReturnDepth(body);
-  if (depth <= MAX_CUSTOM_COMPONENT_DEPTH) return;
+  if (visiting.has(componentName)) {
+    return MIN_REPORTED_CHAIN_DEPTH;
+  }
+  visiting.add(componentName);
 
-  context.report({
-    node: reportNode,
-    messageId: 'flatOwnerTree',
-    data: {
-      component: name,
-      depth: String(depth),
-    },
-  });
+  const component = components.get(componentName);
+  if (!component) {
+    memo.set(componentName, 0);
+    visiting.delete(componentName);
+    return 0;
+  }
+
+  if (component.selfClosingCustomChildren.size === 0) {
+    memo.set(componentName, 1);
+    visiting.delete(componentName);
+    return 1;
+  }
+
+  let depth = 1;
+  for (const childName of component.selfClosingCustomChildren) {
+    if (!components.has(childName)) continue;
+    const childDepth = 1 + computeChainDepth(childName, components, memo, visiting);
+    if (childDepth > depth) depth = childDepth;
+  }
+  memo.set(componentName, depth);
+  visiting.delete(componentName);
+  return depth;
 }
 
 const rule: Rule.RuleModule = {
@@ -130,15 +127,30 @@ const rule: Rule.RuleModule = {
     type: 'suggestion',
     docs: {
       description:
-        'Encourage flat owner trees by reporting components that nest custom JSX components 3+ levels deep without children composition',
+        'Encourage flatter parent component chains by reporting 3+ deep self-closing custom component handoffs',
     },
     messages: {
-      flatOwnerTree:
-        "Component '{{component}}' nests custom components {{depth}} levels deep. Keep owner trees flatter or use children composition boundaries.",
+      deepParentTree:
+        "Component '{{component}}' is part of a {{depth}}-deep parent-component chain of self-closing custom-component handoffs. Flatten the chain by reducing intermediate relay components.",
     },
     schema: [],
   },
   create(context) {
+    const components = new Map<string, ComponentRecord>();
+
+    function registerComponent(
+      name: string | null | undefined,
+      body: Rule.Node | null | undefined,
+      node: Rule.Node,
+    ): void {
+      if (!name || !isPascalCase(name)) return;
+      components.set(name, {
+        name,
+        node,
+        selfClosingCustomChildren: getSelfClosingCustomChildren(body),
+      });
+    }
+
     return {
       FunctionDeclaration(node: Rule.Node) {
         const fn = node as unknown as {
@@ -146,7 +158,7 @@ const rule: Rule.RuleModule = {
           params?: Rule.Node[];
           body?: Rule.Node;
         };
-        checkComponentDepth(context, fn.id?.name, fn.params, fn.body, node);
+        registerComponent(fn.id?.name, fn.body, node);
       },
       VariableDeclarator(node: Rule.Node) {
         const declaration = node as unknown as {
@@ -167,7 +179,23 @@ const rule: Rule.RuleModule = {
           params?: Rule.Node[];
           body?: Rule.Node;
         };
-        checkComponentDepth(context, id.name, init.params, init.body, declaration.id);
+        registerComponent(id.name, init.body, declaration.id);
+      },
+      'Program:exit'() {
+        const memo = new Map<string, number>();
+        for (const component of components.values()) {
+          const depth = computeChainDepth(component.name, components, memo, new Set<string>());
+          if (depth < MIN_REPORTED_CHAIN_DEPTH) continue;
+
+          context.report({
+            node: component.node,
+            messageId: 'deepParentTree',
+            data: {
+              component: component.name,
+              depth: String(depth),
+            },
+          });
+        }
       },
     };
   },

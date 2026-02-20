@@ -46,11 +46,11 @@ const tagEntries = ['a', 'b'];
 
 ```tsx
 // before
-<List items={[1, 2, 3]} />
+<List items={[1, 2, 3]} />;
 
 // after
 const itemList = [1, 2, 3];
-<List items={itemList} />
+<List items={itemList} />;
 ```
 
 ## When Not To Use It

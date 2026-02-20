@@ -1,7 +1,6 @@
 import type { Rule } from 'eslint';
 
 const COMMON_PART_NAMES = new Set([
-  'Root',
   'Trigger',
   'Content',
   'Title',
@@ -10,7 +9,6 @@ const COMMON_PART_NAMES = new Set([
   'Footer',
   'Body',
   'Item',
-  'Group',
   'Label',
   'Input',
   'Control',
@@ -28,30 +26,66 @@ function isPascalCase(name: string): boolean {
 }
 
 function getCompoundParts(name: string): { block: string; part: string } | null {
-  const match = /^([A-Z][a-z0-9]+)([A-Z][a-zA-Z0-9]+)$/.exec(name);
-  if (!match) return null;
-
-  const block = match[1];
-  const part = match[2];
-  if (!COMMON_PART_NAMES.has(part)) return null;
-  return { block, part };
+  for (const part of COMMON_PART_NAMES) {
+    if (!name.endsWith(part)) continue;
+    const block = name.slice(0, name.length - part.length);
+    if (!isPascalCase(block)) continue;
+    return { block, part };
+  }
+  return null;
 }
 
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
     docs: {
-      description:
-        'Prefer compound component member syntax in JSX (for example <Dialog.Trigger /> over <DialogTrigger />)',
+      description: 'Enforce BEM-style compound component naming (for example ButtonGroupItem)',
     },
     messages: {
-      preferMemberSyntax:
-        "Use compound member syntax for '{{name}}'. Prefer '<{{block}}.{{part}} />' over '<{{name}} />'.",
+      genericPartName:
+        "Component '{{name}}' is too generic. Prefix part names with a compound block (for example '{{example}}').",
+      missingBlockComponent:
+        "Compound part '{{name}}' requires matching block '{{block}}' in scope to keep naming consistent.",
     },
     schema: [],
   },
   create(context) {
+    const knownComponentNames = new Set<string>();
+
     return {
+      FunctionDeclaration(node: Rule.Node) {
+        const fn = node as unknown as { id?: Rule.Node | null };
+        if (fn.id?.type !== 'Identifier') return;
+        const id = fn.id as unknown as { name: string };
+        if (!isPascalCase(id.name)) return;
+        knownComponentNames.add(id.name);
+      },
+      VariableDeclarator(node: Rule.Node) {
+        const declaration = node as unknown as { id?: Rule.Node; init?: Rule.Node | null };
+        if (declaration.id?.type !== 'Identifier') return;
+        if (
+          declaration.init?.type !== 'ArrowFunctionExpression' &&
+          declaration.init?.type !== 'FunctionExpression'
+        ) {
+          return;
+        }
+        const id = declaration.id as unknown as { name: string };
+        if (!isPascalCase(id.name)) return;
+        knownComponentNames.add(id.name);
+      },
+      ImportDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as { specifiers?: Rule.Node[] };
+        for (const specifier of declaration.specifiers ?? []) {
+          if (specifier.type !== 'ImportSpecifier' && specifier.type !== 'ImportDefaultSpecifier') {
+            continue;
+          }
+          const importSpecifier = specifier as unknown as { local?: Rule.Node };
+          if (importSpecifier.local?.type !== 'Identifier') continue;
+          const local = importSpecifier.local as unknown as { name: string };
+          if (!isPascalCase(local.name)) continue;
+          knownComponentNames.add(local.name);
+        }
+      },
       JSXOpeningElement(node: Rule.Node) {
         const opening = node as unknown as {
           name: Rule.Node;
@@ -62,16 +96,28 @@ const rule: Rule.RuleModule = {
         const name = (nameNode as unknown as { name: string }).name;
         if (!isPascalCase(name)) return;
 
+        if (COMMON_PART_NAMES.has(name)) {
+          context.report({
+            node: nameNode,
+            messageId: 'genericPartName',
+            data: {
+              name,
+              example: `ButtonGroup${name}`,
+            },
+          });
+          return;
+        }
+
         const parts = getCompoundParts(name);
         if (!parts) return;
+        if (knownComponentNames.has(parts.block)) return;
 
         context.report({
           node: nameNode,
-          messageId: 'preferMemberSyntax',
+          messageId: 'missingBlockComponent',
           data: {
             name,
             block: parts.block,
-            part: parts.part,
           },
         });
       },

@@ -46,11 +46,11 @@ const listOptions = { dense: true, interactive: false };
 
 ```tsx
 // before
-<Card style={{ color: 'red' }} />
+<Card style={{ color: 'red' }} />;
 
 // after
 const cardStyle = { color: 'red' };
-<Card style={cardStyle} />
+<Card style={cardStyle} />;
 ```
 
 ## When Not To Use It

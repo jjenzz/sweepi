@@ -21,12 +21,14 @@ describe('jsx-compound-part-export-naming', () => {
   ruleTester.run('jsx-compound-part-export-naming', rule, {
     valid: [
       `
+        const Dialog = () => null;
         const DialogTrigger = () => null;
-        export { DialogTrigger as Trigger };
+        export { Dialog as Root, DialogTrigger as Trigger };
       `,
       `
+        const Tooltip = () => null;
         const TooltipContent = () => null;
-        export { TooltipContent as Content };
+        export { Tooltip as Root, TooltipContent as Content };
       `,
       `
         const Dialog = () => null;
@@ -35,12 +37,17 @@ describe('jsx-compound-part-export-naming', () => {
       `
         export const Theme = { light: '#fff', dark: '#000' };
       `,
+      `
+        const Button = () => null;
+        export { Button };
+      `,
     ],
     invalid: [
       {
         code: `
+          const Dialog = () => null;
           const DialogTrigger = () => null;
-          export { DialogTrigger };
+          export { Dialog as Root, DialogTrigger };
         `,
         errors: [
           {
@@ -54,7 +61,43 @@ describe('jsx-compound-part-export-naming', () => {
       },
       {
         code: `
+          const Dialog = () => null;
+          export function DialogTrigger() {
+            return null;
+          }
+          export { Dialog as Root };
+        `,
+        errors: [
+          {
+            messageId: 'requirePartAlias',
+            data: {
+              local: 'DialogTrigger',
+              part: 'Trigger',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          const Dialog = () => null;
+          export const DialogTrigger = () => null;
+          export { Dialog as Root };
+        `,
+        errors: [
+          {
+            messageId: 'requirePartAlias',
+            data: {
+              local: 'DialogTrigger',
+              part: 'Trigger',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          const Tooltip = () => null;
           const TooltipContent = () => null;
+          export { Tooltip as Root };
           export { TooltipContent as TooltipContent };
         `,
         errors: [
@@ -77,6 +120,21 @@ describe('jsx-compound-part-export-naming', () => {
             messageId: 'noRuntimeObjectExport',
             data: {
               name: 'Dialog',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          const Dialog = () => null;
+          const DialogTrigger = () => null;
+          export { DialogTrigger as Trigger };
+        `,
+        errors: [
+          {
+            messageId: 'requireRootExport',
+            data: {
+              block: 'Dialog',
             },
           },
         ],

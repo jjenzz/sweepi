@@ -1,18 +1,18 @@
-# Encourage flat JSX owner trees (`jsx-flat-owner-tree`)
+# Encourage flat parent component trees (`jsx-flat-owner-tree`)
 
-Keep owner components shallow. Flag component trees that nest custom components three or more levels deep without `children` composition.
+Keep parent component chains shallow. Flag files where self-closing custom component handoffs form chains 3+ levels deep.
 
 ## Why
 
-Deep owner trees make control flow harder to track. Flatter trees keep boundaries explicit and reduce indirection.
+Deep parent chains make control flow harder to track and spread ownership across many tiny wrappers.
 
 ## Rule Details
 
 - **Target**: PascalCase React component functions.
-- **Reported**: Returned JSX with custom-component nesting depth greater than two when the component does not accept `children`.
+- **Reported**: Components in a 3+ deep chain of self-closing custom components found anywhere in returned JSX (the component may contain any number of elements or markup).
 - **Allowed**:
-  - Shallow owner trees.
-  - Deep composition when the component explicitly accepts `children`.
+  - Shallow parent chains.
+  - Component trees where no self-closing chain reaches depth 3.
 
 ## Options
 
@@ -23,15 +23,31 @@ This rule has no options.
 ### Incorrect
 
 ```tsx
+function Root() {
+  return <Page />;
+}
+
 function Page() {
   return (
-    <AppShell>
-      <Dialog>
-        <DialogContent>
-          <DialogHeader />
-        </DialogContent>
-      </Dialog>
-    </AppShell>
+    <div>
+      <Header />
+    </div>
+  );
+}
+
+function Header() {
+  return (
+    <div>
+      <UserArea />
+    </div>
+  );
+}
+
+function UserArea() {
+  return (
+    <div>
+      <Avatar />
+    </div>
   );
 }
 ```
@@ -39,37 +55,68 @@ function Page() {
 ### Correct
 
 ```tsx
-function Page() {
+function Root() {
   return (
-    <AppShell>
-      <Dialog />
-    </AppShell>
+    <div>
+      <Header.Root>
+        <Header.UserArea />
+      </Header.Root>
+    </div>
   );
 }
 
-function Wrapper({ children }: { children: React.ReactNode }) {
+// header.tsx
+function Header({ children }: { children: React.ReactNode }) {
+  return <div>{children}</div>;
+}
+
+function HeaderUserArea() {
   return (
-    <Dialog>
-      <DialogContent>
-        <DialogHeader>{children}</DialogHeader>
-      </DialogContent>
-    </Dialog>
+    <div>
+      <Avatar />
+    </div>
   );
 }
+
+export { Header as Root, HeaderUserArea as UserArea };
 ```
 
 ## How To Fix
 
-1. Flatten owner-level nesting where possible.
-2. Extract composition boundaries that accept `children`.
-3. Keep top-level pages/components declarative and easy to scan.
+1. Collapse deep self-closing relay chains into a compound boundary.
+2. Move internal steps into compound parts (`Header.UserArea`, etc).
+3. Keep the parent component owning composition directly.
 
 ```tsx
 // before
-<AppShell><Dialog><DialogContent><DialogHeader /></DialogContent></Dialog></AppShell>
+function Root() {
+  return <Page />;
+}
+function Page() {
+  return (
+    <div>
+      <Header />
+    </div>
+  );
+}
+function Header() {
+  return (
+    <div>
+      <UserArea />
+    </div>
+  );
+}
 
 // after
-<AppShell><Dialog /></AppShell>
+function Root() {
+  return (
+    <div>
+      <Header.Root>
+        <Header.UserArea />
+      </Header.Root>
+    </div>
+  );
+}
 ```
 
 ## When Not To Use It

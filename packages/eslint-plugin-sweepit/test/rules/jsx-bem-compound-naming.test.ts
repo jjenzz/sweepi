@@ -20,34 +20,58 @@ const ruleTester = new RuleTester({
 describe('jsx-bem-compound-naming', () => {
   ruleTester.run('jsx-bem-compound-naming', rule, {
     valid: [
-      '<Dialog.Trigger />',
-      '<Tooltip.Content />',
-      '<Dialog />',
+      `
+        const ButtonGroup = () => null;
+        const ButtonGroupItem = () => null;
+        const ButtonGroupIcon = () => null;
+        <ButtonGroup />;
+        <ButtonGroupItem />;
+        <ButtonGroupIcon />;
+      `,
+      `
+        import { ButtonGroup } from './button-group';
+        const ButtonGroupItem = () => null;
+        <ButtonGroupItem />;
+      `,
       '<div />',
     ],
     invalid: [
       {
-        code: '<DialogTrigger />',
+        code: `
+          const Group = () => null;
+          const Item = () => null;
+          const GroupItemIcon = () => null;
+          <Item />;
+          <GroupItemIcon />;
+        `,
         errors: [
           {
-            messageId: 'preferMemberSyntax',
+            messageId: 'genericPartName',
             data: {
-              name: 'DialogTrigger',
-              block: 'Dialog',
-              part: 'Trigger',
+              name: 'Item',
+              example: 'ButtonGroupItem',
+            },
+          },
+          {
+            messageId: 'missingBlockComponent',
+            data: {
+              name: 'GroupItemIcon',
+              block: 'GroupItem',
             },
           },
         ],
       },
       {
-        code: '<TooltipContent />',
+        code: `
+          const GroupIcon = () => null;
+          <GroupIcon />;
+        `,
         errors: [
           {
-            messageId: 'preferMemberSyntax',
+            messageId: 'missingBlockComponent',
             data: {
-              name: 'TooltipContent',
-              block: 'Tooltip',
-              part: 'Content',
+              name: 'GroupIcon',
+              block: 'Group',
             },
           },
         ],

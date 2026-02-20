@@ -1,18 +1,20 @@
-# Prefer compound member JSX naming (`jsx-bem-compound-naming`)
+# Enforce BEM compound naming (`jsx-bem-compound-naming`)
 
-Use compound component parts with member syntax (`<Dialog.Trigger />`) instead of flattened names (`<DialogTrigger />`).
+Use block-prefixed compound names (`ButtonGroup`, `ButtonGroupItem`, `ButtonGroupIcon`) instead of generic or unanchored names (`Group`, `Item`, `GroupItemIcon`).
 
 ## Why
 
-Member syntax keeps compound APIs declarative and predictable. It also makes ownership boundaries explicit between a block and its parts.
+Consistent block prefixes keep compound APIs discoverable and avoid ambiguous names like `Item` or `Icon` that lose ownership context.
 
 ## Rule Details
 
-- **Target**: JSX opening element names.
-- **Reported**: Flattened compound part names like `DialogTrigger`, `TooltipContent`, `PopoverTitle`.
+- **Target**: JSX opening element names for custom components.
+- **Reported**:
+  - Generic part names used as standalone components (`Item`, `Icon`, `Trigger`, and similar).
+  - Compound part names that do not have a matching block component in scope (`GroupItemIcon` without `GroupItem`).
 - **Allowed**:
-  - Member syntax (`Dialog.Trigger`, `Tooltip.Content`).
-  - Non-compound component names.
+  - Consistent block-prefixed naming (`ButtonGroup`, `ButtonGroupItem`, `ButtonGroupIcon`).
+  - Single components that are not compound parts.
   - Native elements.
 
 ## Options
@@ -24,30 +26,42 @@ This rule has no options.
 ### Incorrect
 
 ```tsx
-<DialogTrigger />
-<TooltipContent />
+const Group = () => null;
+const Item = () => null;
+const GroupItemIcon = () => null;
+
+<Item />
+<GroupItemIcon />
 ```
 
 ### Correct
 
 ```tsx
-<Dialog.Trigger />
-<Tooltip.Content />
+const ButtonGroup = () => null;
+const ButtonGroupItem = () => null;
+const ButtonGroupIcon = () => null;
+
+<ButtonGroup />
+<ButtonGroupItem />
+<ButtonGroupIcon />
 ```
 
 ## How To Fix
 
-1. Replace flattened component part names with member syntax.
-2. Keep the compound block as the namespace (`Dialog`, `Tooltip`, and so on).
+1. Choose one explicit block name for the compound (`ButtonGroup`).
+2. Prefix each part with that block (`ButtonGroupItem`, `ButtonGroupIcon`, and so on).
+3. Avoid generic standalone part names (`Item`, `Icon`) in JSX.
 
 ```tsx
 // before
-<DialogTrigger />
+<Item />
+<GroupItemIcon />
 
 // after
-<Dialog.Trigger />
+<ButtonGroupItem />
+<ButtonGroupIcon />
 ```
 
 ## When Not To Use It
 
-Disable this rule if your project intentionally uses flattened compound part component names as public API.
+Disable this rule if your project intentionally allows generic/unanchored compound part names.
