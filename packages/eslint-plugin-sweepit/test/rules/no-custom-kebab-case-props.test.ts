@@ -44,7 +44,7 @@ describe('no-custom-kebab-case-props', () => {
         errors: [
           {
             messageId: 'noCustomKebab',
-            data: { prop: 'my-custom-prop' },
+            data: { prop: 'my-custom-prop', suggestion: 'myCustomProp' },
           },
         ],
       },
@@ -53,7 +53,7 @@ describe('no-custom-kebab-case-props', () => {
         errors: [
           {
             messageId: 'noCustomKebab',
-            data: { prop: 'some-other-prop' },
+            data: { prop: 'some-other-prop', suggestion: 'someOtherProp' },
           },
         ],
       },
@@ -63,7 +63,7 @@ describe('no-custom-kebab-case-props', () => {
         errors: [
           {
             messageId: 'noCustomKebab',
-            data: { prop: 'x-foo' },
+            data: { prop: 'x-foo', suggestion: 'xFoo' },
           },
         ],
       },

@@ -3,3 +3,4 @@ tsconfig.app.tsbuildinfo
 tsconfig.node.tsbuildinfo
 dist/
 llm-docs/
+.env

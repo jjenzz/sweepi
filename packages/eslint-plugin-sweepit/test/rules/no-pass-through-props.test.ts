@@ -50,6 +50,7 @@ describe('no-pass-through-props', () => {
             data: {
               prop: 'title',
               component: 'Card',
+              forwardedTo: 'title',
             },
           },
         ],
@@ -66,6 +67,7 @@ describe('no-pass-through-props', () => {
             data: {
               prop: 'subtitle',
               component: 'Panel',
+              forwardedTo: 'subtitle',
             },
           },
         ],

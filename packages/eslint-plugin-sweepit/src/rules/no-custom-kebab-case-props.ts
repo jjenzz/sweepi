@@ -37,6 +37,17 @@ function isKebabCase(name: string): boolean {
   return name.includes('-');
 }
 
+function kebabToCamelCase(name: string): string {
+  const segments = name.split('-').filter(Boolean);
+  if (segments.length === 0) return name;
+  const first = segments[0] ?? '';
+  const tail = segments
+    .slice(1)
+    .map((segment) => segment[0]?.toUpperCase() + segment.slice(1))
+    .join('');
+  return `${first}${tail}`;
+}
+
 function resolveRuleOptions(context: Rule.RuleContext): ResolvedRuleOptions {
   const option = (context.options[0] as RuleOptions | undefined) ?? {};
   const allowedPrefixes = Array.from(
@@ -64,7 +75,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noCustomKebab:
-        "Custom kebab-case prop '{{prop}}' is not allowed. Use camelCase, or use aria-* / data-* for native HTML attributes.",
+        "Custom kebab-case prop '{{prop}}' is not allowed. Rename to camelCase (for example '{{suggestion}}'), or keep kebab-case only for allowed native/custom prefixes.",
     },
     schema: [
       {
@@ -96,7 +107,7 @@ const rule: Rule.RuleModule = {
         context.report({
           node: (node as unknown as { name: JSXIdentifier | JSXNamespacedName }).name,
           messageId: 'noCustomKebab',
-          data: { prop: propName },
+          data: { prop: propName, suggestion: kebabToCamelCase(propName) },
         });
       },
     };

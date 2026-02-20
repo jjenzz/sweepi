@@ -97,49 +97,44 @@ function getSelfClosingCustomChildren(body: Rule.Node | null | undefined): Set<s
   return names;
 }
 
-function computeChainDepth(
+function computeLongestChain(
   componentName: string,
   components: Map<string, ComponentRecord>,
-  memo: Map<string, number>,
+  memo: Map<string, string[]>,
   visiting: Set<string>,
-  minReportedChainDepth: number,
-): number {
+): string[] {
   const cached = memo.get(componentName);
   if (cached != null) return cached;
 
   if (visiting.has(componentName)) {
-    return minReportedChainDepth;
+    return [componentName];
   }
   visiting.add(componentName);
 
   const component = components.get(componentName);
   if (!component) {
-    memo.set(componentName, 0);
+    memo.set(componentName, [componentName]);
     visiting.delete(componentName);
-    return 0;
+    return [componentName];
   }
 
   if (component.selfClosingCustomChildren.size === 0) {
-    memo.set(componentName, 1);
+    const base = [componentName];
+    memo.set(componentName, base);
     visiting.delete(componentName);
-    return 1;
+    return base;
   }
 
-  let depth = 1;
+  let bestChildChain: string[] = [];
   for (const childName of component.selfClosingCustomChildren) {
     if (!components.has(childName)) continue;
-    const childDepth = 1 + computeChainDepth(
-      childName,
-      components,
-      memo,
-      visiting,
-      minReportedChainDepth,
-    );
-    if (childDepth > depth) depth = childDepth;
+    const childChain = computeLongestChain(childName, components, memo, visiting);
+    if (childChain.length > bestChildChain.length) bestChildChain = childChain;
   }
-  memo.set(componentName, depth);
+  const fullChain = [componentName, ...bestChildChain];
+  memo.set(componentName, fullChain);
   visiting.delete(componentName);
-  return depth;
+  return fullChain;
 }
 
 const rule: Rule.RuleModule = {
@@ -151,7 +146,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       deepParentTree:
-        "Component '{{component}}' is part of a {{depth}}-deep parent-component chain of self-closing custom-component handoffs. Flatten the chain by reducing intermediate relay components.",
+        "Component '{{component}}' is in a {{depth}}-deep self-closing handoff chain (allowed: {{allowedDepth}}): {{chain}}. Start flattening at '{{nextHandoff}}' by inlining/compounding intermediate relays.",
     },
     schema: [
       {
@@ -221,15 +216,10 @@ const rule: Rule.RuleModule = {
         registerComponent(id.name, init.body, declaration.id);
       },
       'Program:exit'() {
-        const memo = new Map<string, number>();
+        const memo = new Map<string, string[]>();
         for (const component of components.values()) {
-          const depth = computeChainDepth(
-            component.name,
-            components,
-            memo,
-            new Set<string>(),
-            minReportedChainDepth,
-          );
+          const chain = computeLongestChain(component.name, components, memo, new Set<string>());
+          const depth = chain.length;
           if (depth < minReportedChainDepth) continue;
 
           context.report({
@@ -238,6 +228,9 @@ const rule: Rule.RuleModule = {
             data: {
               component: component.name,
               depth: String(depth),
+              allowedDepth: String(allowedChainDepth),
+              chain: chain.join(' -> '),
+              nextHandoff: chain[1] ?? component.name,
             },
           });
         }

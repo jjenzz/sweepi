@@ -11,8 +11,7 @@ This makes discovery and autocomplete easier than mixed verb-first naming.
 
 - **Target**: JSX attributes whose names start with `on`.
 - **Behavior**: Detects `on{Verb}{Noun}` patterns and suggests renaming to `on{Noun}{Verb}`.
-- **Default verbs** include common UI actions (examples, non-exhaustive) such as `Change`, `Click`, `Submit`, `Focus`, `Blur`, `Select`, `Open`, `Close`, `Toggle`, `Input`, `KeyDown`, `KeyUp`, `Press`, `Hover`, `Drag`, `Drop`, `Scroll`, `Disable`, `Enable`, `Activate`, `Deactivate`, `Show`, `Hide`, `Expand`, `Collapse`, `Create`, `Update`, `Delete`, `Load`, `Save`, `Validate`, and related past-tense forms.
-- **Default nouns** include common UI/domain nouns such as `Input`, `Value`, `Form`, `Option`, `Modal`, `Button`, `Dialog`, `Dropdown`, `Item`, `Field`, `Feature`, `State`, `Status`, `Theme`, `Mode`, `User`, `Filter`, `Panel`, `Section`, `Tab`, `Menu`, `Page`, `Route`, `View`, `Drawer`, `Sidebar`, `Tooltip`, `Popover`, and others.
+- **Built-in vocabulary**: Uses curated internal noun/verb dictionaries for common UI/domain naming and evolves over time. Use `extendVerbs`/`extendNouns` to add project-specific terms.
 
 ## Options
 
@@ -24,6 +23,7 @@ Type: `string[]`\
 Default: `[]` (extends built-in defaults)
 
 Additional verbs to allow when checking `on{Noun}{Verb}` ordering.
+Values are normalized case-insensitively and whitespace is removed. 
 
 ### extendNouns
 
@@ -31,6 +31,7 @@ Type: `string[]`\
 Default: `[]` (extends built-in defaults)
 
 Additional nouns to allow when checking `on{Noun}{Verb}` ordering.
+Values are normalized case-insensitively, and whitespace is removed.
 
 The example below adds domain-specific values:
 
@@ -40,8 +41,8 @@ The example below adds domain-specific values:
     "sweepit/jsx-on-noun-verb-handler-props": [
       "error",
       {
-        "extendVerbs": ["Change", "Disable", "Disabled"],
-        "extendNouns": ["Value", "Feature", "Item"]
+        "extendVerbs": ["change", "disable", "disabled"],
+        "extendNouns": ["value", "feature", "item"]
       }
     ]
   }
@@ -80,7 +81,7 @@ With custom options:
 
 ```tsx
 // eslint rule options:
-// { extendVerbs: ['Archived'], extendNouns: ['Item'] }
+// { extendVerbs: ['archived'], extendNouns: ['item'] }
 <Item onItemArchived={handleArchived} />
 ```
 

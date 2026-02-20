@@ -4,6 +4,9 @@
 	"repository": "jjenzz/sweepit",
 	"author": "Jenna Smith <175330+jjenzz@users.noreply.github.com>",
 	"scripts": {
+		"build": "pnpm --filter=\"eslint-plugin-sweepit\" build",
+		"test": "pnpm --filter=\"eslint-plugin-sweepit\" test",
+		"typecheck": "pnpm --filter=\"eslint-plugin-sweepit\" typecheck",
 		"release": "auto shipit"
 	},
 	"devDependencies": {

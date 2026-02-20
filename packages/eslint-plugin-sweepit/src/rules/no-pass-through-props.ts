@@ -155,6 +155,24 @@ function isDirectJsxAttributeForward(
   return typedGrandParent.type === 'JSXAttribute';
 }
 
+function getForwardedTargetProp(
+  node: Rule.Node,
+  parent: Rule.Node | null,
+  parentMap: WeakMap<object, ParentRef>,
+): string | null {
+  if (!isDirectJsxAttributeForward(node, parent, parentMap)) return null;
+  const ref = parent ? parentMap.get(parent as unknown as object) : null;
+  const grandParent = ref?.parent as
+    | {
+        type?: string;
+        name?: { type?: string; name?: string };
+      }
+    | undefined;
+  if (!grandParent || grandParent.type !== 'JSXAttribute') return null;
+  if (grandParent.name?.type !== 'JSXIdentifier') return null;
+  return grandParent.name.name ?? null;
+}
+
 function checkComponent(
   context: Rule.RuleContext,
   functionNode: Rule.Node,
@@ -179,10 +197,11 @@ function checkComponent(
     {
       seen: boolean;
       owned: boolean;
+      forwardedTo: Set<string>;
     }
   >();
   for (const localName of bindingMap.keys()) {
-    usageMap.set(localName, { seen: false, owned: false });
+    usageMap.set(localName, { seen: false, owned: false, forwardedTo: new Set<string>() });
   }
 
   const parentMap = new WeakMap<object, ParentRef>();
@@ -200,9 +219,12 @@ function checkComponent(
     if (isDefinitionLikeIdentifier(node, parent, identifier.name)) return;
 
     usage.seen = true;
-    if (!isDirectJsxAttributeForward(node, parent, parentMap)) {
+    const forwardedTarget = getForwardedTargetProp(node, parent, parentMap);
+    if (!forwardedTarget) {
       usage.owned = true;
+      return;
     }
+    usage.forwardedTo.add(forwardedTarget);
   });
 
   for (const [localName, usage] of usageMap.entries()) {
@@ -213,7 +235,12 @@ function checkComponent(
     context.report({
       node: binding.node,
       messageId: 'noPassThroughProp',
-      data: { prop: binding.propName, component: name },
+      data: {
+        prop: binding.propName,
+        component: name,
+        forwardedTo:
+          usage.forwardedTo.size > 0 ? Array.from(usage.forwardedTo).sort().join(', ') : 'child prop',
+      },
     });
   }
 }
@@ -227,7 +254,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noPassThroughProp:
-        "Prop '{{prop}}' in '{{component}}' is only passed through. Keep ownership local or compose with children instead of forwarding pass-through props.",
+        "Prop '{{prop}}' in '{{component}}' is only forwarded to '{{forwardedTo}}'. Remove the pass-through prop, derive a local value, or expose composition via children at the ownership boundary.",
     },
     schema: [],
   },

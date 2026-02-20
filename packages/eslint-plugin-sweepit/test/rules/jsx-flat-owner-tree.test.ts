@@ -117,6 +117,9 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Root',
               depth: '3',
+              allowedDepth: '1',
+              chain: 'Root -> Page -> Header',
+              nextHandoff: 'Page',
             },
           },
           {
@@ -124,6 +127,9 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Page',
               depth: '2',
+              allowedDepth: '1',
+              chain: 'Page -> Header',
+              nextHandoff: 'Header',
             },
           },
         ],
@@ -187,6 +193,9 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Root',
               depth: '5',
+              allowedDepth: '2',
+              chain: 'Root -> Page -> Header -> UserArea -> Avatar',
+              nextHandoff: 'Page',
             },
           },
           {
@@ -194,6 +203,9 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Page',
               depth: '4',
+              allowedDepth: '2',
+              chain: 'Page -> Header -> UserArea -> Avatar',
+              nextHandoff: 'Header',
             },
           },
           {
@@ -201,6 +213,9 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Header',
               depth: '3',
+              allowedDepth: '2',
+              chain: 'Header -> UserArea -> Avatar',
+              nextHandoff: 'UserArea',
             },
           },
         ],
@@ -265,6 +280,9 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Root',
               depth: '5',
+              allowedDepth: '4',
+              chain: 'Root -> Page -> Header -> UserArea -> Avatar',
+              nextHandoff: 'Page',
             },
           },
         ],
