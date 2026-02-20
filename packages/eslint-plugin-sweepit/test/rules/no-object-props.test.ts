@@ -13,6 +13,10 @@ const ruleTester = new RuleTester({
       ecmaVersion: 'latest',
       sourceType: 'module',
       ecmaFeatures: { jsx: true },
+      projectService: {
+        allowDefaultProject: ['estree.tsx'],
+      },
+      tsconfigRootDir: process.cwd(),
     },
   },
 });
@@ -21,8 +25,8 @@ describe('no-object-props', () => {
   ruleTester.run('no-object-props', rule, {
     valid: [
       '<Comp tone="info" />',
-      '<Comp style={style} />',
-      '<Comp config={getConfig()} />',
+      '<Comp onValueChange={onValueChange} />',
+      '<Comp count={totalCount} />',
       '<Comp />',
     ],
     invalid: [
@@ -41,6 +45,33 @@ describe('no-object-props', () => {
           {
             messageId: 'noObjectProps',
             data: { prop: 'options' },
+          },
+        ],
+      },
+      {
+        code: 'type CardStyle = { color: string }; const style: CardStyle = { color: "red" }; <Comp style={style} />',
+        errors: [
+          {
+            messageId: 'noObjectProps',
+            data: { prop: 'style' },
+          },
+        ],
+      },
+      {
+        code: 'interface UserRow { id: string; email: string; } const user: UserRow = { id: "1", email: "a@example.com" }; <Comp user={user} />',
+        errors: [
+          {
+            messageId: 'noObjectProps',
+            data: { prop: 'user' },
+          },
+        ],
+      },
+      {
+        code: 'function getConfig(): { dense: boolean } { return { dense: true }; } <Comp config={getConfig()} />',
+        errors: [
+          {
+            messageId: 'noObjectProps',
+            data: { prop: 'config' },
           },
         ],
       },

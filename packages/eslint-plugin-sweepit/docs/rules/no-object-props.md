@@ -1,19 +1,23 @@
-# Disallow inline object literals in JSX props (`no-object-props`)
+# Disallow object props in JSX (`no-object-props`)
 
-Inline object literals in JSX props create a new reference on every render.
+Object props often couple components to data models and business-layer shapes.
 
 ## Why
 
-Passing fresh object references makes component inputs unstable and can trigger avoidable rerenders or effect churn.
+- Passing object props encourages broad, tightly coupled component contracts.
+- Teams often pass whole row/domain objects when components only need a few fields.
+- Composition with primitive props keeps APIs explicit and reusable.
 
 ## Rule Details
 
 - **Target**: JSX attributes with expression values.
-- **Reported**: Inline object literals (`{{ ... }}`) passed directly as prop values.
+- **Reported**:
+  - Inline object literals (`{{ ... }}`).
+  - Expressions whose TypeScript type resolves to an object (for example identifiers, member access, and function calls returning objects).
 - **Allowed**:
   - Primitive values.
-  - Identifiers or stable references (`config={config}`).
-  - Function calls and other non-object expressions.
+  - Function values (for event handlers, callbacks, etc.).
+  - Non-object expressions.
 
 ## Options
 
@@ -25,34 +29,42 @@ This rule has no options.
 
 ```tsx
 <Card style={{ color: 'red' }} />
-<List options={{ dense: true, interactive: false }} />
+<UserRow user={userRow} />
+<Card config={getCardConfig()} />
 ```
 
 ### Correct
 
 ```tsx
-const cardStyle = { color: 'red' };
-const listOptions = { dense: true, interactive: false };
-
-<Card style={cardStyle} />
-<List options={listOptions} />
+<Card tone="info" elevation={2} />
+<UserRow name={user.name} email={user.email} />
+<Dialog onOpenChange={onOpenChange} />
 ```
 
 ## How To Fix
 
-1. Hoist inline object literals into stable identifiers.
-2. Pass the identifier instead of an inline literal.
-3. Keep object creation at an ownership boundary where reference changes are intentional.
+1. Replace object props with explicit primitive props for only what the component needs.
+2. Move structure into component composition (compound parts + children) instead of data bundles.
+3. If object state must be shared across composed parts, keep it in private component context instead of prop contracts.
+4. Keep object-shaped data at ownership boundaries, not leaf component APIs.
 
 ```tsx
 // before
-<Card style={{ color: 'red' }} />;
+<UserRow user={user} />;
 
 // after
-const cardStyle = { color: 'red' };
-<Card style={cardStyle} />;
+<UserRow name={user.name} email={user.email} />;
+```
+
+If object-shaped data truly must flow to multiple compound parts, prefer context scoped to the compound component:
+
+```tsx
+<UserCard.Root id={user.id}>
+  <UserCard.Header />
+  <UserCard.Body />
+</UserCard.Root>
 ```
 
 ## When Not To Use It
 
-Disable this rule if your architecture intentionally allows inline object literals in JSX and accepts the referential churn.
+Disable this rule if your architecture intentionally uses object-shaped prop contracts.

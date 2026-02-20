@@ -13,6 +13,10 @@ const ruleTester = new RuleTester({
       ecmaVersion: 'latest',
       sourceType: 'module',
       ecmaFeatures: { jsx: true },
+      projectService: {
+        allowDefaultProject: ['estree.tsx'],
+      },
+      tsconfigRootDir: process.cwd(),
     },
   },
 });
@@ -20,9 +24,9 @@ const ruleTester = new RuleTester({
 describe('no-array-props', () => {
   ruleTester.run('no-array-props', rule, {
     valid: [
-      '<Comp items={items} />',
-      '<Comp values={getValues()} />',
+      '<Comp tone="info" />',
       '<Comp total={3} />',
+      '<Comp onOpenChange={onOpenChange} />',
       '<Comp />',
     ],
     invalid: [
@@ -41,6 +45,33 @@ describe('no-array-props', () => {
           {
             messageId: 'noArrayProps',
             data: { prop: 'entries' },
+          },
+        ],
+      },
+      {
+        code: 'const items: number[] = [1, 2, 3]; <Comp items={items} />',
+        errors: [
+          {
+            messageId: 'noArrayProps',
+            data: { prop: 'items' },
+          },
+        ],
+      },
+      {
+        code: 'const entries: readonly string[] = ["a", "b"]; <Comp entries={entries} />',
+        errors: [
+          {
+            messageId: 'noArrayProps',
+            data: { prop: 'entries' },
+          },
+        ],
+      },
+      {
+        code: 'function getValues(): string[] { return ["x", "y"]; } <Comp values={getValues()} />',
+        errors: [
+          {
+            messageId: 'noArrayProps',
+            data: { prop: 'values' },
           },
         ],
       },

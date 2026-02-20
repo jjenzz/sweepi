@@ -1,19 +1,23 @@
-# Disallow inline array literals in JSX props (`no-array-props`)
+# Disallow array props in JSX (`no-array-props`)
 
-Inline array literals in JSX props create a new reference on every render.
+Array props often hide component requirements behind bundled list structures.
 
 ## Why
 
-Passing fresh array references makes component inputs unstable and can trigger avoidable rerenders or effect churn.
+- Passing arrays as props encourages broad contracts instead of explicit inputs.
+- Arrays frequently carry extra business data the component does not actually use.
+- Composition and primitive props keep APIs narrow and maintainable.
 
 ## Rule Details
 
 - **Target**: JSX attributes with expression values.
-- **Reported**: Inline array literals (`{[ ... ]}`) passed directly as prop values.
+- **Reported**:
+  - Inline array literals (`{[ ... ]}`).
+  - Expressions whose TypeScript type resolves to an array/tuple (for example identifiers and function calls returning arrays).
 - **Allowed**:
   - Primitive values.
-  - Identifiers or stable references (`items={items}`).
-  - Function calls and other non-array expressions.
+  - Function values (for handlers/callbacks).
+  - Non-array expressions.
 
 ## Options
 
@@ -25,34 +29,45 @@ This rule has no options.
 
 ```tsx
 <List items={[1, 2, 3]} />
-<Tags entries={['a', 'b']} />
+<TagList tags={tags} />
+<Menu items={getMenuItems()} />
 ```
 
 ### Correct
 
 ```tsx
-const itemList = [1, 2, 3];
-const tagEntries = ['a', 'b'];
-
-<List items={itemList} />
-<Tags entries={tagEntries} />
+<List total={3} />
+<TagList primaryTag={tagA} secondaryTag={tagB} />
+<Menu>
+  <Menu.Item label="Dashboard" />
+  <Menu.Item label="Settings" />
+</Menu>
 ```
 
 ## How To Fix
 
-1. Hoist inline array literals into stable identifiers.
-2. Pass the identifier instead of an inline literal.
-3. Keep array creation at an ownership boundary where reference changes are intentional.
+1. Replace array props with explicit, primitive props for actual component needs.
+2. Prefer children/compound-part composition for repeated UI structures.
+3. If list state must be shared across composed parts, keep it in private component context instead of prop contracts.
+4. Keep array-shaped data at higher ownership boundaries, not component contracts.
 
 ```tsx
 // before
-<List items={[1, 2, 3]} />;
+<TagList tags={tags} />;
 
 // after
-const itemList = [1, 2, 3];
-<List items={itemList} />;
+<TagList firstTag={tags[0]} secondTag={tags[1]} />;
+```
+
+If array-shaped data truly must flow to multiple compound parts, prefer context scoped to the compound component:
+
+```tsx
+<Menu.Root selectedCount={selectedCount}>
+  <Menu.List />
+  <Menu.Footer />
+</Menu.Root>
 ```
 
 ## When Not To Use It
 
-Disable this rule if your architecture intentionally allows inline array literals in JSX and accepts the referential churn.
+Disable this rule if your architecture intentionally uses array-shaped prop contracts.

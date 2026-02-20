@@ -32,8 +32,8 @@ export default [...sweepit.configs.react];
 | `sweepit/no-render-helper-functions` | Disallows JSX-returning functions unless they use PascalCase component naming. |
 | `sweepit/no-element-props` | Restricts `ReactNode`/`ReactElement` prop usage to explicit composition conventions (`children`/`render`). |
 | `sweepit/no-componenttype-props` | Disallows `ComponentType`/`FC`/`FunctionComponent` props in component contracts. |
-| `sweepit/no-object-props` | Disallows inline object literals in JSX props to avoid referential churn. |
-| `sweepit/no-array-props` | Disallows inline array literals in JSX props to avoid referential churn. |
+| `sweepit/no-object-props` | Disallows object-valued JSX props (including typed identifiers/calls), encouraging explicit primitive contracts and composition. |
+| `sweepit/no-array-props` | Disallows array-valued JSX props (including typed identifiers/calls), encouraging explicit primitive contracts and composition. |
 | `sweepit/jsx-bem-compound-naming` | Enforces block-prefixed naming for exported compound component parts. |
 | `sweepit/jsx-compound-part-export-naming` | Enforces `Root`/part alias export naming for compound component modules. |
 | `sweepit/no-pass-through-props` | Disallows props that are only forwarded unchanged to children. |
