@@ -1,34 +1,15 @@
 import type { Rule } from 'eslint';
+import path from 'node:path';
 
-const COMMON_PART_NAMES = new Set([
-  'Root',
-  'Trigger',
-  'Content',
-  'Title',
-  'Description',
-  'Header',
-  'Footer',
-  'Body',
-  'Item',
-  'Group',
-  'Label',
-  'Input',
-  'Control',
-  'Indicator',
-  'Icon',
-  'Arrow',
-  'Portal',
-  'Overlay',
-]);
+interface ExportRecord {
+  localName: string;
+  exportedName: string;
+  node: Rule.Node;
+}
 
-function getCompoundParts(name: string): { block: string; part: string } | null {
-  const match = /^([A-Z][a-z0-9]+)([A-Z][a-zA-Z0-9]+)$/.exec(name);
-  if (!match) return null;
-
-  const block = match[1];
-  const part = match[2];
-  if (!COMMON_PART_NAMES.has(part)) return null;
-  return { block, part };
+interface ObjectExportRecord {
+  name: string;
+  node: Rule.Node;
 }
 
 function isPascalCase(name: string): boolean {
@@ -37,34 +18,30 @@ function isPascalCase(name: string): boolean {
   return first >= 'A' && first <= 'Z';
 }
 
-function getObjectPropertyName(property: Rule.Node): string | null {
-  if (property.type !== 'Property') return null;
-  const prop = property as unknown as {
-    key?: Rule.Node;
-    computed?: boolean;
-  };
-  if (prop.computed) return null;
-  if (!prop.key) return null;
-
-  if (prop.key.type === 'Identifier') {
-    return (prop.key as unknown as { name: string }).name;
-  }
-  if (prop.key.type === 'Literal') {
-    const key = prop.key as unknown as { value?: unknown };
-    return typeof key.value === 'string' ? key.value : null;
-  }
-  return null;
+function normalizeForComparison(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
-function hasCompoundPartKey(node: Rule.Node): boolean {
-  if (node.type !== 'ObjectExpression') return false;
-  const objectExpression = node as unknown as { properties?: Rule.Node[] };
-  for (const property of objectExpression.properties ?? []) {
-    const propertyName = getObjectPropertyName(property);
-    if (!propertyName) continue;
-    if (COMMON_PART_NAMES.has(propertyName)) return true;
-  }
-  return false;
+function getFileStem(filename: string): string | null {
+  if (!filename || filename === '<input>') return null;
+  const base = path.basename(filename);
+  const ext = path.extname(base);
+  if (!ext) return base;
+  return base.slice(0, -ext.length);
+}
+
+function isFunctionLikeComponentInit(node: Rule.Node | null | undefined): boolean {
+  if (!node) return false;
+  const typed = node as unknown as { type?: string };
+  return typed.type === 'ArrowFunctionExpression' || typed.type === 'FunctionExpression';
+}
+
+function getIdentifierLikeName(node: Rule.Node | null | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as unknown as { type?: string; name?: string; value?: unknown };
+  if (typedNode.type === 'Identifier' && typedNode.name) return typedNode.name;
+  if (typedNode.type === 'Literal' && typeof typedNode.value === 'string') return typedNode.value;
+  return null;
 }
 
 const rule: Rule.RuleModule = {
@@ -72,137 +49,186 @@ const rule: Rule.RuleModule = {
     type: 'suggestion',
     docs: {
       description:
-        'Enforce compound part export aliasing (export { DialogTrigger as Trigger }) and disallow runtime object exports',
+        'Enforce compound export aliasing from file-stem block and disallow runtime object export APIs',
     },
     messages: {
       requirePartAlias:
-        "Export compound part '{{local}}' as '{{part}}' (export { {{local}} as {{part}} }).",
+        "Export part '{{local}}' as '{{part}}' for block '{{block}}' (export { {{local}} as {{part}} }).",
       requireRootExport:
         "Compound block '{{block}}' exports parts. Also export its root namespace as `export { {{block}} as Root }`.",
+      requireRootAlias:
+        "Export block '{{block}}' as 'Root' (export { {{block}} as Root }).",
       noRuntimeObjectExport:
-        "Avoid exporting runtime object '{{name}}' for compound APIs. Export parts with aliases instead (for example export { {{name}}Trigger as Trigger }).",
+        "Avoid exporting runtime object '{{name}}' for compound APIs. Export root/parts with aliases instead.",
     },
     schema: [],
   },
   create(context) {
-    const partExportCountByBlock = new Map<string, number>();
-    const hasRootAliasByBlock = new Set<string>();
-    const firstPartNodeByBlock = new Map<string, Rule.Node>();
+    const localComponents = new Set<string>();
+    const exports: ExportRecord[] = [];
+    const objectExports: ObjectExportRecord[] = [];
 
-    function recordCompoundPartExport(name: string, node: Rule.Node): { part: string } | null {
-      const parts = getCompoundParts(name);
-      if (!parts) return null;
+    function registerLocalComponent(name: string): void {
+      if (!isPascalCase(name)) return;
+      localComponents.add(name);
+    }
 
-      const current = partExportCountByBlock.get(parts.block) ?? 0;
-      partExportCountByBlock.set(parts.block, current + 1);
-      if (!firstPartNodeByBlock.has(parts.block)) {
-        firstPartNodeByBlock.set(parts.block, node);
-      }
-      return { part: parts.part };
+    function recordExport(localName: string, exportedName: string, node: Rule.Node): void {
+      exports.push({ localName, exportedName, node });
     }
 
     return {
+      FunctionDeclaration(node: Rule.Node) {
+        const fn = node as unknown as { id?: Rule.Node | null };
+        const idName = getIdentifierLikeName(fn.id);
+        if (!idName) return;
+        registerLocalComponent(idName);
+      },
+      VariableDeclarator(node: Rule.Node) {
+        const declaration = node as unknown as { id?: Rule.Node; init?: Rule.Node | null };
+        if (!isFunctionLikeComponentInit(declaration.init)) return;
+        const idName = getIdentifierLikeName(declaration.id);
+        if (!idName) return;
+        registerLocalComponent(idName);
+      },
       ExportNamedDeclaration(node: Rule.Node) {
         const declaration = node as unknown as {
           declaration?: Rule.Node | null;
           specifiers?: Rule.Node[];
+          source?: Rule.Node | null;
         };
+
+        if (declaration.source) return;
+
+        if (declaration.declaration?.type === 'FunctionDeclaration') {
+          const fn = declaration.declaration as unknown as { id?: Rule.Node | null };
+          const idName = getIdentifierLikeName(fn.id);
+          if (!idName || !fn.id) return;
+          registerLocalComponent(idName);
+          recordExport(idName, idName, fn.id);
+          return;
+        }
 
         if (declaration.declaration?.type === 'VariableDeclaration') {
           const variableDeclaration = declaration.declaration as unknown as {
-            declarations?: Array<{
-              id?: Rule.Node;
-              init?: Rule.Node | null;
-            }>;
+            declarations?: Array<{ id?: Rule.Node; init?: Rule.Node | null }>;
           };
-
           for (const entry of variableDeclaration.declarations ?? []) {
-            if (entry.id?.type !== 'Identifier') continue;
-            const id = entry.id as unknown as { name: string };
-            if (
-              entry.init?.type === 'ObjectExpression' &&
-              isPascalCase(id.name) &&
-              hasCompoundPartKey(entry.init)
-            ) {
-              context.report({
-                node: entry.id,
-                messageId: 'noRuntimeObjectExport',
-                data: { name: id.name },
-              });
+            const idName = getIdentifierLikeName(entry.id);
+            if (!idName || !entry.id) continue;
+
+            if (entry.init?.type === 'ObjectExpression' && isPascalCase(idName)) {
+              objectExports.push({ name: idName, node: entry.id });
               continue;
             }
 
-            if (
-              entry.init?.type !== 'ArrowFunctionExpression' &&
-              entry.init?.type !== 'FunctionExpression'
-            ) {
-              continue;
-            }
-            const recorded = recordCompoundPartExport(id.name, entry.id);
-            if (!recorded) continue;
-            context.report({
-              node: entry.id,
-              messageId: 'requirePartAlias',
-              data: { local: id.name, part: recorded.part },
-            });
+            if (!isFunctionLikeComponentInit(entry.init)) continue;
+            registerLocalComponent(idName);
+            recordExport(idName, idName, entry.id);
           }
-        }
-        if (declaration.declaration?.type === 'FunctionDeclaration') {
-          const functionDeclaration = declaration.declaration as unknown as {
-            id?: Rule.Node | null;
-          };
-          if (functionDeclaration.id?.type === 'Identifier') {
-            const id = functionDeclaration.id as unknown as { name: string };
-            const recorded = recordCompoundPartExport(id.name, functionDeclaration.id);
-            if (recorded) {
-              context.report({
-                node: functionDeclaration.id,
-                messageId: 'requirePartAlias',
-                data: { local: id.name, part: recorded.part },
-              });
-            }
-          }
+          return;
         }
 
         for (const specifier of declaration.specifiers ?? []) {
           if (specifier.type !== 'ExportSpecifier') continue;
-
           const exportSpecifier = specifier as unknown as {
             local?: Rule.Node;
             exported?: Rule.Node;
           };
-          if (exportSpecifier.local?.type !== 'Identifier') continue;
-          if (exportSpecifier.exported?.type !== 'Identifier') continue;
+          const localName = getIdentifierLikeName(exportSpecifier.local);
+          const exportedName = getIdentifierLikeName(exportSpecifier.exported);
+          if (!localName || !exportedName || !exportSpecifier.exported) continue;
+          recordExport(localName, exportedName, exportSpecifier.exported);
+        }
+      },
+      ExportDefaultDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as { declaration?: Rule.Node | null };
+        const declared = declaration.declaration;
+        if (!declared) return;
 
-          const local = exportSpecifier.local as unknown as { name: string };
-          const exported = exportSpecifier.exported as unknown as { name: string };
+        if (declared.type === 'FunctionDeclaration') {
+          const fn = declared as unknown as { id?: Rule.Node | null };
+          const idName = getIdentifierLikeName(fn.id);
+          if (!idName || !fn.id) return;
+          registerLocalComponent(idName);
+          recordExport(idName, idName, fn.id);
+          return;
+        }
 
-          if (exported.name === 'Root') {
-            hasRootAliasByBlock.add(local.name);
-          }
-
-          const recorded = recordCompoundPartExport(local.name, exportSpecifier.local);
-          if (!recorded) continue;
-
-          if (exported.name === recorded.part) continue;
-          context.report({
-            node: exportSpecifier.exported,
-            messageId: 'requirePartAlias',
-            data: { local: local.name, part: recorded.part },
-          });
+        if (declared.type === 'Identifier') {
+          const idName = getIdentifierLikeName(declared);
+          if (!idName) return;
+          recordExport(idName, idName, declared);
         }
       },
       'Program:exit'() {
-        for (const [block, count] of partExportCountByBlock.entries()) {
-          if (count < 1) continue;
-          if (hasRootAliasByBlock.has(block)) continue;
+        const stem = getFileStem(context.getFilename());
+        if (!stem) return;
+        if (stem.toLowerCase() === 'index') return;
 
-          const reportNode = firstPartNodeByBlock.get(block);
-          if (!reportNode) continue;
+        const componentExports = exports.filter(
+          (entry) => localComponents.has(entry.localName) && isPascalCase(entry.localName),
+        );
+        if (componentExports.length < 2) return;
+
+        const normalizedStem = normalizeForComparison(stem);
+        const blockCandidates = [...new Set([...localComponents, ...objectExports.map((e) => e.name)])]
+          .filter((name) => normalizeForComparison(name) === normalizedStem);
+        if (blockCandidates.length === 0) return;
+
+        const block = blockCandidates[0];
+        if (!block) return;
+        const blockExports = componentExports.filter((entry) => entry.localName === block);
+        const partExports = componentExports.filter(
+          (entry) => entry.localName !== block && entry.localName.startsWith(block),
+        );
+
+        for (const partExport of partExports) {
+          const expectedPartAlias = partExport.localName.slice(block.length);
+          if (expectedPartAlias.length === 0) continue;
+          if (partExport.exportedName === expectedPartAlias) continue;
+
           context.report({
-            node: reportNode,
-            messageId: 'requireRootExport',
-            data: { block },
+            node: partExport.node,
+            messageId: 'requirePartAlias',
+            data: {
+              local: partExport.localName,
+              part: expectedPartAlias,
+              block,
+            },
+          });
+        }
+
+        if (partExports.length > 0) {
+          if (blockExports.length === 0) {
+            const firstPartExport = partExports[0];
+            if (!firstPartExport) return;
+            context.report({
+              node: firstPartExport.node,
+              messageId: 'requireRootExport',
+              data: { block },
+            });
+          } else {
+            const hasRootAlias = blockExports.some((entry) => entry.exportedName === 'Root');
+            if (!hasRootAlias) {
+              const firstBlockExport = blockExports[0];
+              if (!firstBlockExport) return;
+              context.report({
+                node: firstBlockExport.node,
+                messageId: 'requireRootAlias',
+                data: { block },
+              });
+            }
+          }
+        }
+
+        if (partExports.length === 0) return;
+        for (const objectExport of objectExports) {
+          if (objectExport.name !== block) continue;
+          context.report({
+            node: objectExport.node,
+            messageId: 'noRuntimeObjectExport',
+            data: { name: objectExport.name },
           });
         }
       },

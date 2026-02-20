@@ -10,8 +10,9 @@ Restricting to `children` and `render` preserves explicit composition points and
 ## Rule Details
 
 - **Target**: `TSInterfaceDeclaration` and `TSTypeAliasDeclaration` with object-like type bodies.
-- **ReactNode**: Props typed as `ReactNode` or `React.ReactNode` are forbidden unless the prop name is `children`.
-- **ReactElement**: Props typed as `ReactElement` or `React.ReactElement` are forbidden unless the prop name is `render`.
+- **ReactNode**: Props that resolve to React's `ReactNode` type are forbidden unless the prop name is `children`.
+- **ReactElement**: Props that resolve to React's `ReactElement` type are forbidden unless the prop name is `render`.
+- **Render prop union**: `render` can be a `ReactElement`, or a function that returns a `ReactNode`/`ReactElement` (including aliases/wrapper type aliases that resolve to those React types).
 
 Custom ReactNode props encourage passing arbitrary JSX through props, which can make components harder to reason about. Prefer `children` for composition. ReactElement props are typically used for render props; only the conventional `render` name is allowed.
 
@@ -42,16 +43,14 @@ type ModalProps = {
 
 ```tsx
 interface CardProps {
-  children: React.ReactNode;
-}
-
-interface CardProps {
-  render?: React.ReactElement;
-}
-
-interface CardProps {
   children: ReactNode;
-  render?: ReactElement;
+  render?: ReactElement | (() => ReactNode);
+}
+
+type RenderProp = ReactElement | (() => ReactNode);
+
+interface ModalProps {
+  render?: RenderProp;
 }
 ```
 

@@ -1,6 +1,6 @@
 # Encourage flat parent component trees (`jsx-flat-owner-tree`)
 
-Keep parent component chains shallow. Flag files where self-closing custom component handoffs form chains 3+ levels deep.
+Keep parent component chains shallow. Flag files where self-closing custom component handoffs exceed the allowed chain depth.
 
 ## Why
 
@@ -9,14 +9,17 @@ Deep parent chains make control flow harder to track and spread ownership across
 ## Rule Details
 
 - **Target**: PascalCase React component functions.
-- **Reported**: Components in a 3+ deep chain of self-closing custom components found anywhere in returned JSX (the component may contain any number of elements or markup).
+- **Reported**: Components in chains deeper than `allowedChainDepth` of self-closing custom components found anywhere in returned JSX (the component may contain any number of elements or markup).
 - **Allowed**:
   - Shallow parent chains.
   - Component trees where no self-closing chain reaches depth 3.
 
 ## Options
 
-This rule has no options.
+This rule accepts one option:
+
+- `allowedChainDepth` (integer, minimum `1`, default `2`): Maximum allowed chain depth before reporting.  
+  Example: `allowedChainDepth: 2` reports depth `3+`; `allowedChainDepth: 4` reports depth `5+`.
 
 ## Examples
 

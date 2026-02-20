@@ -1,22 +1,26 @@
-# Enforce compound part export naming (`jsx-compound-part-export-naming`)
+# Enforce compound export alias naming (`jsx-compound-part-export-naming`)
 
-Compound parts should be exported as alias names suitable for namespace imports (`export { DialogTrigger as Trigger }`).
+When a file looks like a compound component module, enforce root/part export aliases from the inferred block name.
 
 ## Why
 
-Aliased part exports pair naturally with compound member usage (`<Dialog.Trigger />`) and avoid runtime object assembly patterns that hide API shape.
+Aliased root/part exports make compound APIs predictable and easy to scan at import sites (`* as Header`, `Header.Root`, `Header.UserArea`).
 
 ## Rule Details
 
-- **Target**: ESM named exports.
+- **Target**: ESM exports in files with 2+ exported local components.
+- **Heuristic**:
+  - Infer block from file stem matching an exported local component name.
+  - Skip files where no exported component matches the stem.
+  - Skip `index.*` and re-export-only files.
 - **Reported**:
-  - Compound part exports without alias (`export { DialogTrigger }`).
-  - Compound part exports aliased to the wrong name.
-  - Missing root namespace export for compounds that export parts (`export { Dialog as Root }`).
-  - Runtime object exports for compound APIs (`export const Dialog = { Trigger: DialogTrigger }`).
+  - Part exports not aliased to their suffix (`ButtonGroupItem` must export as `Item`).
+  - Missing root export when parts are exported (`export { ButtonGroup as Root }`).
+  - Root exported without `Root` alias.
+  - Runtime object export APIs for the inferred block (`export const ButtonGroup = { ... }`).
 - **Allowed**:
-  - `export { DialogTrigger as Trigger }`.
-  - Non-compound exports.
+  - `export { ButtonGroup as Root, ButtonGroupItem as Item }`.
+  - Non-compound files and unrelated component groups where stem does not identify a block.
 
 ## Options
 
@@ -27,27 +31,26 @@ This rule has no options.
 ### Incorrect
 
 ```ts
-const DialogTrigger = () => null;
-export { DialogTrigger };
+// button-group.tsx
+const ButtonGroup = () => null;
+const ButtonGroupItem = () => null;
+export { ButtonGroupItem as Item }; // missing ButtonGroup as Root
 
-const TooltipContent = () => null;
-export { TooltipContent as TooltipContent };
+const ButtonGroup = () => null;
+const ButtonGroupItem = () => null;
+export { ButtonGroup, ButtonGroupItem as Item }; // ButtonGroup must be aliased as Root
 
-const Dialog = () => null;
-const DialogTrigger = () => null;
-export { DialogTrigger as Trigger };
-
-const DialogTrigger = () => null;
-export const Dialog = { Trigger: DialogTrigger };
+const ButtonGroupItem = () => null;
+export const ButtonGroup = { Item: ButtonGroupItem };
 ```
 
 ### Correct
 
 ```ts
-// dialog.tsx
-const Dialog = () => null;
-const DialogTrigger = () => null;
-export { Dialog as Root, DialogTrigger as Trigger };
+// button-group.tsx
+const ButtonGroup = () => null;
+const ButtonGroupItem = () => null;
+export { ButtonGroup as Root, ButtonGroupItem as Item };
 
 // button.tsx
 const Button = () => null;
@@ -56,19 +59,18 @@ export { Button };
 
 ## How To Fix
 
-1. Export each compound part with its part alias (`Trigger`, `Content`, `Item`, and so on).
-2. For compounds that export parts, export the block root as `Root` (`export { Dialog as Root }`).
-3. Avoid runtime object exports for compound APIs.
-4. Keep the namespace shape in import usage, not in exported runtime objects.
+1. Export the inferred block as `Root`.
+2. Export each block-prefixed part with alias equal to the suffix after the block.
+3. Avoid runtime object export APIs for the inferred block.
 
 ```ts
 // before
-export { DialogTrigger };
+export { ButtonGroup, ButtonGroupItem };
 
 // after
-export { DialogTrigger as Trigger };
+export { ButtonGroup as Root, ButtonGroupItem as Item };
 ```
 
 ## When Not To Use It
 
-Disable this rule if your architecture intentionally exports runtime objects for compound APIs instead of alias-based part exports.
+Disable this rule if your architecture intentionally uses alternative export contracts for compound modules.

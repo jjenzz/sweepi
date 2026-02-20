@@ -74,8 +74,60 @@ describe('jsx-flat-owner-tree', () => {
           return <div>Sidebar</div>;
         }
       `,
+      {
+        code: `
+          function Root() {
+            return <Page />;
+          }
+
+          function Page() {
+            return <Header />;
+          }
+
+          function Header() {
+            return <UserArea />;
+          }
+
+          function UserArea() {
+            return <div>User</div>;
+          }
+        `,
+        options: [{ allowedChainDepth: 4 }],
+      },
     ],
     invalid: [
+      {
+        code: `
+          function Root() {
+            return <Page />;
+          }
+
+          function Page() {
+            return <Header />;
+          }
+
+          function Header() {
+            return <div>Header</div>;
+          }
+        `,
+        options: [{ allowedChainDepth: 1 }],
+        errors: [
+          {
+            messageId: 'deepParentTree',
+            data: {
+              component: 'Root',
+              depth: '3',
+            },
+          },
+          {
+            messageId: 'deepParentTree',
+            data: {
+              component: 'Page',
+              depth: '2',
+            },
+          },
+        ],
+      },
       {
         code: `
           function Root() {
@@ -149,6 +201,70 @@ describe('jsx-flat-owner-tree', () => {
             data: {
               component: 'Header',
               depth: '3',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          function Root() {
+            return (
+              <main>
+                <Page />
+                <Sidebar />
+              </main>
+            );
+          }
+
+          function Page() {
+            return (
+              <div>
+                <Header />
+                <Summary />
+              </div>
+            );
+          }
+
+          function Header() {
+            return (
+              <div>
+                <UserArea />
+                <Logo />
+              </div>
+            );
+          }
+
+          function UserArea() {
+            return (
+              <div>
+                <Avatar />
+              </div>
+            );
+          }
+
+          function Avatar() {
+            return <img />;
+          }
+
+          function Sidebar() {
+            return <aside>Sidebar</aside>;
+          }
+
+          function Summary() {
+            return <div>Summary</div>;
+          }
+
+          function Logo() {
+            return <div>Logo</div>;
+          }
+        `,
+        options: [{ allowedChainDepth: 4 }],
+        errors: [
+          {
+            messageId: 'deepParentTree',
+            data: {
+              component: 'Root',
+              depth: '5',
             },
           },
         ],

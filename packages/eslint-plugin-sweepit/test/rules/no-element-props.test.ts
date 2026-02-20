@@ -13,6 +13,10 @@ const ruleTester = new RuleTester({
       ecmaVersion: 'latest',
       sourceType: 'module',
       ecmaFeatures: { jsx: true },
+      projectService: {
+        allowDefaultProject: ['estree.tsx'],
+      },
+      tsconfigRootDir: process.cwd(),
     },
   },
 });
@@ -28,6 +32,8 @@ describe('no-element-props', () => {
       "import type { ReactElement } from 'react'; interface Props { render: ReactElement; }",
       "import type React from 'react'; interface Props { render?: React.ReactElement; }",
       "import type { ReactElement } from 'react'; type Props = { render: ReactElement };",
+      "import type { ReactElement, ReactNode } from 'react'; interface Props { render?: ReactElement | (() => ReactNode); }",
+      "import type { ReactElement, ReactNode } from 'react'; type RenderProp = ReactElement | (() => ReactNode); interface Props { render?: RenderProp; }",
       // Non-element props
       'interface Props { title: string; count: number; }',
     ],
@@ -105,6 +111,15 @@ describe('no-element-props', () => {
           {
             messageId: 'noElementPropsReactElement',
             data: { prop: 'children' },
+          },
+        ],
+      },
+      {
+        code: "import type { ReactElement, ReactNode } from 'react'; type Slot = ReactElement; interface Props { header: Slot; render?: ReactElement | (() => ReactNode); }",
+        errors: [
+          {
+            messageId: 'noElementPropsReactElement',
+            data: { prop: 'header' },
           },
         ],
       },

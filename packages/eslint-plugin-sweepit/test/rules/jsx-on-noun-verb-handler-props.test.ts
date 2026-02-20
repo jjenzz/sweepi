@@ -40,6 +40,10 @@ describe('jsx-on-noun-verb-handler-props', () => {
         code: '<Item onItemArchived={handleArchived} />',
         options: [{ allowedVerbs: ['Archived'], allowedNouns: ['Item'] }],
       },
+      {
+        code: '<Input onValueChange={handleChange} />',
+        options: [{ allowedVerbs: ['Archived'], allowedNouns: ['Item'] }],
+      },
     ],
     invalid: [
       {
@@ -163,6 +167,16 @@ describe('jsx-on-noun-verb-handler-props', () => {
           {
             messageId: 'preferNounVerb',
             data: { prop: 'onArchivedItem', suggestion: 'onItemArchived' },
+          },
+        ],
+      },
+      {
+        code: '<Input onChangeValue={handleChange} />',
+        options: [{ allowedVerbs: ['Archived'], allowedNouns: ['Item'] }],
+        errors: [
+          {
+            messageId: 'preferNounVerb',
+            data: { prop: 'onChangeValue', suggestion: 'onValueChange' },
           },
         ],
       },

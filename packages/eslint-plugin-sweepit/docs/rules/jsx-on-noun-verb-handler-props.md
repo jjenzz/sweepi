@@ -25,8 +25,8 @@ This rule accepts an optional object:
 }
 ```
 
-- `allowedVerbs`: replaces the default verb list.
-- `allowedNouns`: replaces the default noun list.
+- `allowedVerbs`: extends the default verb list.
+- `allowedNouns`: extends the default noun list.
 
 Use options when your domain uses verbs or nouns not covered by defaults.
 

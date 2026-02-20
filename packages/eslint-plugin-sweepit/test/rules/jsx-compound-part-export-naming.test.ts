@@ -22,16 +22,6 @@ describe('jsx-compound-part-export-naming', () => {
     valid: [
       `
         const Dialog = () => null;
-        const DialogTrigger = () => null;
-        export { Dialog as Root, DialogTrigger as Trigger };
-      `,
-      `
-        const Tooltip = () => null;
-        const TooltipContent = () => null;
-        export { Tooltip as Root, TooltipContent as Content };
-      `,
-      `
-        const Dialog = () => null;
         export { Dialog };
       `,
       `
@@ -41,100 +31,163 @@ describe('jsx-compound-part-export-naming', () => {
         const Button = () => null;
         export { Button };
       `,
+      {
+        filename: '/tmp/button-group.tsx',
+        code: `
+          const ButtonGroup = () => null;
+          const ButtonGroupItem = () => null;
+          export { ButtonGroup as Root, ButtonGroupItem as Item };
+        `,
+      },
+      {
+        filename: '/tmp/index.tsx',
+        code: `
+          const Dialog = () => null;
+          const DialogTrigger = () => null;
+          export { Dialog, DialogTrigger };
+        `,
+      },
+      {
+        filename: '/tmp/button-group.tsx',
+        code: `
+          export { ButtonGroup, ButtonGroupItem } from './button-group';
+        `,
+      },
     ],
     invalid: [
       {
+        filename: '/tmp/button-group.tsx',
         code: `
-          const Dialog = () => null;
-          const DialogTrigger = () => null;
-          export { Dialog as Root, DialogTrigger };
+          const ButtonGroup = () => null;
+          const ButtonGroupItem = () => null;
+          export { ButtonGroup as Root, ButtonGroupItem };
         `,
         errors: [
           {
             messageId: 'requirePartAlias',
             data: {
-              local: 'DialogTrigger',
-              part: 'Trigger',
+              local: 'ButtonGroupItem',
+              part: 'Item',
+              block: 'ButtonGroup',
             },
           },
         ],
       },
       {
+        filename: '/tmp/button-group.tsx',
         code: `
-          const Dialog = () => null;
-          export function DialogTrigger() {
+          const ButtonGroup = () => null;
+          export function ButtonGroupItem() {
             return null;
           }
-          export { Dialog as Root };
+          export { ButtonGroup as Root };
         `,
         errors: [
           {
             messageId: 'requirePartAlias',
             data: {
-              local: 'DialogTrigger',
-              part: 'Trigger',
+              local: 'ButtonGroupItem',
+              part: 'Item',
+              block: 'ButtonGroup',
             },
           },
         ],
       },
       {
+        filename: '/tmp/button-group.tsx',
         code: `
-          const Dialog = () => null;
-          export const DialogTrigger = () => null;
-          export { Dialog as Root };
+          const ButtonGroup = () => null;
+          export const ButtonGroupItem = () => null;
+          export { ButtonGroup };
         `,
         errors: [
           {
             messageId: 'requirePartAlias',
             data: {
-              local: 'DialogTrigger',
-              part: 'Trigger',
+              local: 'ButtonGroupItem',
+              part: 'Item',
+              block: 'ButtonGroup',
+            },
+          },
+          {
+            messageId: 'requireRootAlias',
+            data: {
+              block: 'ButtonGroup',
             },
           },
         ],
       },
       {
+        filename: '/tmp/button-group.tsx',
         code: `
-          const Tooltip = () => null;
-          const TooltipContent = () => null;
-          export { Tooltip as Root };
-          export { TooltipContent as TooltipContent };
+          const ButtonGroup = () => null;
+          const ButtonGroupItem = () => null;
+          export { ButtonGroup as Root };
+          export { ButtonGroupItem as ButtonGroupItem };
         `,
         errors: [
           {
             messageId: 'requirePartAlias',
             data: {
-              local: 'TooltipContent',
-              part: 'Content',
+              local: 'ButtonGroupItem',
+              part: 'Item',
+              block: 'ButtonGroup',
             },
           },
         ],
       },
       {
+        filename: '/tmp/button-group.tsx',
         code: `
-          const DialogTrigger = () => null;
-          export const Dialog = { Trigger: DialogTrigger };
-        `,
-        errors: [
-          {
-            messageId: 'noRuntimeObjectExport',
-            data: {
-              name: 'Dialog',
-            },
-          },
-        ],
-      },
-      {
-        code: `
-          const Dialog = () => null;
-          const DialogTrigger = () => null;
-          export { DialogTrigger as Trigger };
+          const ButtonGroupItem = () => null;
+          const ButtonGroupIcon = () => null;
+          export { ButtonGroupItem as Item, ButtonGroupIcon as Icon };
+          export const ButtonGroup = { Item: ButtonGroupItem };
         `,
         errors: [
           {
             messageId: 'requireRootExport',
             data: {
-              block: 'Dialog',
+              block: 'ButtonGroup',
+            },
+          },
+          {
+            messageId: 'noRuntimeObjectExport',
+            data: {
+              name: 'ButtonGroup',
+            },
+          },
+        ],
+      },
+      {
+        filename: '/tmp/button-group.tsx',
+        code: `
+          const ButtonGroup = () => null;
+          const ButtonGroupItem = () => null;
+          const ButtonGroupIcon = () => null;
+          export { ButtonGroupItem as Item, ButtonGroupIcon as Icon };
+        `,
+        errors: [
+          {
+            messageId: 'requireRootExport',
+            data: {
+              block: 'ButtonGroup',
+            },
+          },
+        ],
+      },
+      {
+        filename: '/tmp/button-group.tsx',
+        code: `
+          const ButtonGroup = () => null;
+          const ButtonGroupItem = () => null;
+          export { ButtonGroup, ButtonGroupItem as Item };
+        `,
+        errors: [
+          {
+            messageId: 'requireRootAlias',
+            data: {
+              block: 'ButtonGroup',
             },
           },
         ],

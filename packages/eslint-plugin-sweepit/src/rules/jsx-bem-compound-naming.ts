@@ -1,23 +1,5 @@
 import type { Rule } from 'eslint';
-
-const COMMON_PART_NAMES = new Set([
-  'Trigger',
-  'Content',
-  'Title',
-  'Description',
-  'Header',
-  'Footer',
-  'Body',
-  'Item',
-  'Label',
-  'Input',
-  'Control',
-  'Indicator',
-  'Icon',
-  'Arrow',
-  'Portal',
-  'Overlay',
-]);
+import path from 'node:path';
 
 function isPascalCase(name: string): boolean {
   if (name.length === 0) return false;
@@ -25,105 +7,182 @@ function isPascalCase(name: string): boolean {
   return first >= 'A' && first <= 'Z';
 }
 
-function getCompoundParts(name: string): { block: string; part: string } | null {
-  for (const part of COMMON_PART_NAMES) {
-    if (!name.endsWith(part)) continue;
-    const block = name.slice(0, name.length - part.length);
-    if (!isPascalCase(block)) continue;
-    return { block, part };
-  }
+function isFunctionLikeComponentInit(node: Rule.Node | null | undefined): boolean {
+  if (!node) return false;
+  const typed = node as unknown as { type?: string };
+  return typed.type === 'ArrowFunctionExpression' || typed.type === 'FunctionExpression';
+}
+
+function normalizeForComparison(value: string): string {
+  return value.toLowerCase().replace(/[^a-z0-9]/g, '');
+}
+
+function getFileStem(filename: string): string | null {
+  if (!filename || filename === '<input>') return null;
+  const base = path.basename(filename);
+  const ext = path.extname(base);
+  if (!ext) return base;
+  return base.slice(0, -ext.length);
+}
+
+function getExportedIdentifierName(node: Rule.Node | null | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as unknown as { type?: string; name?: string; value?: unknown };
+  if (typedNode.type === 'Identifier' && typedNode.name) return typedNode.name;
+  if (typedNode.type === 'Literal' && typeof typedNode.value === 'string') return typedNode.value;
   return null;
+}
+
+interface ExportedComponent {
+  localName: string;
+  exportedName: string;
+  node: Rule.Node;
 }
 
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
     docs: {
-      description: 'Enforce BEM-style compound component naming (for example ButtonGroupItem)',
+      description:
+        'Enforce compound component export naming by matching exported component names to the file stem block prefix',
     },
     messages: {
-      genericPartName:
-        "Component '{{name}}' is too generic. Prefix part names with a compound block (for example '{{example}}').",
-      missingBlockComponent:
-        "Compound part '{{name}}' requires matching block '{{block}}' in scope to keep naming consistent.",
+      exportedPartMustUseBlockPrefix:
+        "Exported component '{{name}}' should be prefixed with compound block '{{block}}' in this file (for example '{{example}}').",
     },
     schema: [],
   },
   create(context) {
-    const knownComponentNames = new Set<string>();
+    const localComponents = new Map<string, Rule.Node>();
+    const exportedComponents: ExportedComponent[] = [];
+
+    function registerLocalComponent(name: string, node: Rule.Node): void {
+      if (!isPascalCase(name)) return;
+      localComponents.set(name, node);
+    }
+
+    function recordExport(localName: string, exportedName: string, node: Rule.Node): void {
+      if (!localComponents.has(localName)) return;
+      if (!isPascalCase(exportedName)) return;
+      exportedComponents.push({ localName, exportedName, node });
+    }
 
     return {
       FunctionDeclaration(node: Rule.Node) {
         const fn = node as unknown as { id?: Rule.Node | null };
-        if (fn.id?.type !== 'Identifier') return;
-        const id = fn.id as unknown as { name: string };
-        if (!isPascalCase(id.name)) return;
-        knownComponentNames.add(id.name);
+        const idName = getExportedIdentifierName(fn.id);
+        if (!idName) return;
+        registerLocalComponent(idName, fn.id as Rule.Node);
       },
       VariableDeclarator(node: Rule.Node) {
         const declaration = node as unknown as { id?: Rule.Node; init?: Rule.Node | null };
-        if (declaration.id?.type !== 'Identifier') return;
-        if (
-          declaration.init?.type !== 'ArrowFunctionExpression' &&
-          declaration.init?.type !== 'FunctionExpression'
-        ) {
+        if (!isFunctionLikeComponentInit(declaration.init)) return;
+        const idName = getExportedIdentifierName(declaration.id);
+        if (!idName || !declaration.id) return;
+        registerLocalComponent(idName, declaration.id);
+      },
+      ExportNamedDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as {
+          declaration?: Rule.Node | null;
+          specifiers?: Rule.Node[];
+          source?: Rule.Node | null;
+        };
+
+        if (declaration.source) return;
+
+        if (declaration.declaration?.type === 'FunctionDeclaration') {
+          const fn = declaration.declaration as unknown as { id?: Rule.Node | null };
+          const idName = getExportedIdentifierName(fn.id);
+          if (!idName || !fn.id) return;
+          registerLocalComponent(idName, fn.id);
+          recordExport(idName, idName, fn.id);
           return;
         }
-        const id = declaration.id as unknown as { name: string };
-        if (!isPascalCase(id.name)) return;
-        knownComponentNames.add(id.name);
-      },
-      ImportDeclaration(node: Rule.Node) {
-        const declaration = node as unknown as { specifiers?: Rule.Node[] };
-        for (const specifier of declaration.specifiers ?? []) {
-          if (specifier.type !== 'ImportSpecifier' && specifier.type !== 'ImportDefaultSpecifier') {
-            continue;
+
+        if (declaration.declaration?.type === 'VariableDeclaration') {
+          const variableDeclaration = declaration.declaration as unknown as {
+            declarations?: Array<{ id?: Rule.Node; init?: Rule.Node | null }>;
+          };
+          for (const entry of variableDeclaration.declarations ?? []) {
+            if (!isFunctionLikeComponentInit(entry.init)) continue;
+            const idName = getExportedIdentifierName(entry.id);
+            if (!idName || !entry.id) continue;
+            registerLocalComponent(idName, entry.id);
+            recordExport(idName, idName, entry.id);
           }
-          const importSpecifier = specifier as unknown as { local?: Rule.Node };
-          if (importSpecifier.local?.type !== 'Identifier') continue;
-          const local = importSpecifier.local as unknown as { name: string };
-          if (!isPascalCase(local.name)) continue;
-          knownComponentNames.add(local.name);
+          return;
+        }
+
+        for (const specifier of declaration.specifiers ?? []) {
+          if (specifier.type !== 'ExportSpecifier') continue;
+          const exportSpecifier = specifier as unknown as {
+            local?: Rule.Node;
+            exported?: Rule.Node;
+          };
+          const localName = getExportedIdentifierName(exportSpecifier.local);
+          const exportedName = getExportedIdentifierName(exportSpecifier.exported);
+          if (!localName || !exportedName) continue;
+          if (!exportSpecifier.exported) continue;
+          recordExport(localName, exportedName, exportSpecifier.exported);
         }
       },
-      JSXOpeningElement(node: Rule.Node) {
-        const opening = node as unknown as {
-          name: Rule.Node;
-        };
-        const nameNode = opening.name;
-        const typedNameNode = nameNode as unknown as { type?: string; name?: string };
-        if (typedNameNode.type !== 'JSXIdentifier' || !typedNameNode.name) return;
+      ExportDefaultDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as { declaration?: Rule.Node | null };
+        const declared = declaration.declaration;
+        if (!declared) return;
 
-        const name = typedNameNode.name;
-        if (!isPascalCase(name)) return;
+        if (declared.type === 'FunctionDeclaration') {
+          const fn = declared as unknown as { id?: Rule.Node | null };
+          const idName = getExportedIdentifierName(fn.id);
+          if (!idName || !fn.id) return;
+          registerLocalComponent(idName, fn.id);
+          recordExport(idName, idName, fn.id);
+          return;
+        }
 
-        if (COMMON_PART_NAMES.has(name)) {
+        if (declared.type === 'Identifier') {
+          const idName = getExportedIdentifierName(declared);
+          if (!idName) return;
+          recordExport(idName, idName, declared);
+        }
+      },
+      'Program:exit'() {
+        if (exportedComponents.length < 2) return;
+
+        const stem = getFileStem(context.getFilename());
+        if (!stem) return;
+        if (stem.toLowerCase() === 'index') return;
+
+        const normalizedStem = normalizeForComparison(stem);
+        const blockCandidates = exportedComponents
+          .map((entry) => entry.localName)
+          .filter((name) => normalizeForComparison(name) === normalizedStem);
+
+        if (blockCandidates.length === 0) return;
+
+        for (const exported of exportedComponents) {
+          const isBlockExport = blockCandidates.includes(exported.localName);
+          if (isBlockExport) continue;
+
+          const usesAnyBlockPrefix = blockCandidates.some((block) =>
+            exported.localName.startsWith(block),
+          );
+          if (usesAnyBlockPrefix) continue;
+
+          const preferredBlock = blockCandidates[0] ?? 'Block';
           context.report({
-            node: nameNode,
-            messageId: 'genericPartName',
+            node: exported.node,
+            messageId: 'exportedPartMustUseBlockPrefix',
             data: {
-              name,
-              example: `ButtonGroup${name}`,
+              name: exported.localName,
+              block: preferredBlock,
+              example: `${preferredBlock}${exported.localName}`,
             },
           });
-          return;
         }
-
-        const parts = getCompoundParts(name);
-        if (!parts) return;
-        if (knownComponentNames.has(parts.block)) return;
-
-        context.report({
-          node: nameNode,
-          messageId: 'missingBlockComponent',
-          data: {
-            name,
-            block: parts.block,
-          },
-        });
       },
     };
-  },
+  }
 };
 
 export default rule;

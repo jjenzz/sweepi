@@ -25,6 +25,18 @@ describe('no-custom-kebab-case-props', () => {
       '<div data-testid="submit" />',
       '<span data-cy="button" />',
       '<Component myCustomProp="value" />',
+      {
+        code: '<Component x-foo="value" />',
+        options: [{ allowedPrefixes: ['x-'] }],
+      },
+      {
+        code: '<Component feature-flag-enabled />',
+        options: [{ allowedProps: ['feature-flag-enabled'] }],
+      },
+      {
+        code: '<Component aria-label="Close" x-foo="value" />',
+        options: [{ allowedPrefixes: ['x-'] }],
+      },
     ],
     invalid: [
       {
@@ -42,6 +54,16 @@ describe('no-custom-kebab-case-props', () => {
           {
             messageId: 'noCustomKebab',
             data: { prop: 'some-other-prop' },
+          },
+        ],
+      },
+      {
+        code: '<Component x-foo="value" />',
+        options: [{ allowedProps: ['feature-flag-enabled'] }],
+        errors: [
+          {
+            messageId: 'noCustomKebab',
+            data: { prop: 'x-foo' },
           },
         ],
       },

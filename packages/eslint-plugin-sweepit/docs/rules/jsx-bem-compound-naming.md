@@ -1,21 +1,28 @@
-# Enforce BEM compound naming (`jsx-bem-compound-naming`)
+# Enforce block-element compound naming (`jsx-bem-compound-naming`)
 
-Use block-prefixed compound names (`ButtonGroup`, `ButtonGroupItem`, `ButtonGroupIcon`) instead of generic or unanchored names (`Group`, `Item`, `GroupItemIcon`).
+When a file appears to define a compound component family, enforce block-prefixed exported component names.
 
 ## Why
 
-Consistent block prefixes keep compound APIs discoverable and avoid ambiguous names like `Item` or `Icon` that lose ownership context.
+Block-element naming makes it easier to track which parts belong to which block when scanning the JSX tree.
+Names like `ButtonGroupItem` and `ButtonGroupIcon` carry ownership context directly, while generic names like `Item` or `Icon` hide that relationship.
+
+This improves readability in large trees, reduces ambiguity during refactors, and keeps compound APIs predictable.
 
 ## Rule Details
 
-- **Target**: JSX opening element names for custom components.
+- **Target**: Exported local function components in modules with 2+ exported components.
+- **Heuristic**:
+  - If any exported component name matches the file stem (case-insensitive, separator-insensitive),
+    that export is treated as the block.
+  - Other exported components in that file must be prefixed with that block.
 - **Reported**:
-  - Generic part names used as standalone components (`Item`, `Icon`, `Trigger`, and similar).
-  - Compound part names that do not have a matching block component in scope (`GroupItemIcon` without `GroupItem`).
+  - Exported component names that do not use the inferred block prefix.
 - **Allowed**:
-  - Consistent block-prefixed naming (`ButtonGroup`, `ButtonGroupItem`, `ButtonGroupIcon`).
-  - Single components that are not compound parts.
-  - Native elements.
+  - Files where no exported component matches the file stem.
+  - `index.*` files (skipped).
+  - Re-export-only files (`export { X } from ...`).
+  - Non-component exports.
 
 ## Options
 
@@ -26,42 +33,41 @@ This rule has no options.
 ### Incorrect
 
 ```tsx
-const Group = () => null;
+// button-group.tsx
+const ButtonGroup = () => null;
 const Item = () => null;
 const GroupItemIcon = () => null;
 
-<Item />
-<GroupItemIcon />
+export { ButtonGroup, Item, GroupItemIcon };
 ```
 
 ### Correct
 
 ```tsx
+// button-group.tsx
 const ButtonGroup = () => null;
 const ButtonGroupItem = () => null;
 const ButtonGroupIcon = () => null;
 
-<ButtonGroup />
-<ButtonGroupItem />
-<ButtonGroupIcon />
+export { ButtonGroup, ButtonGroupItem, ButtonGroupIcon };
 ```
 
 ## How To Fix
 
-1. Choose one explicit block name for the compound (`ButtonGroup`).
-2. Prefix each part with that block (`ButtonGroupItem`, `ButtonGroupIcon`, and so on).
-3. Avoid generic standalone part names (`Item`, `Icon`) in JSX.
+1. Ensure one exported component matches the file stem (for example `button-group.tsx` -> `ButtonGroup`).
+2. Prefix other exported components with that block (`ButtonGroupItem`, `ButtonGroupIcon`, and so on).
+3. Keep unrelated grouped exports in files whose stem does not imply a single compound block.
 
 ```tsx
 // before
-<Item />
-<GroupItemIcon />
+// button-group.tsx
+export { ButtonGroup, Item, GroupItemIcon };
 
 // after
-<ButtonGroupItem />
-<ButtonGroupIcon />
+// button-group.tsx
+export { ButtonGroup, ButtonGroupItem, ButtonGroupIcon };
 ```
 
 ## When Not To Use It
 
-Disable this rule if your project intentionally allows generic/unanchored compound part names.
+Disable this rule if your project intentionally mixes unrelated exported component names in files that share a block-like file stem.

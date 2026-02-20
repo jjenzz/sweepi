@@ -117,6 +117,16 @@ interface RuleOptions {
   allowedNouns?: string[];
 }
 
+function mergeAllowedValues(
+  defaults: readonly string[],
+  configured?: string[],
+): string[] {
+  if (!configured || configured.length === 0) {
+    return [...defaults];
+  }
+  return [...new Set<string>([...defaults, ...configured])];
+}
+
 function getPropName(node: JSXIdentifier | JSXNamespacedName): string | null {
   if (node.type === 'JSXIdentifier') {
     return node.name;
@@ -209,9 +219,11 @@ const rule: Rule.RuleModule = {
   },
   create(context) {
     const options = (context.options[0] as RuleOptions | undefined) ?? {};
-    const verbs = options.allowedVerbs ?? [...DEFAULT_VERBS];
+    const verbs = mergeAllowedValues(DEFAULT_VERBS, options.allowedVerbs);
     verbs.sort((a, b) => b.length - a.length);
-    const nouns = new Set<string>(options.allowedNouns ?? [...DEFAULT_NOUNS]);
+    const nouns = new Set<string>(
+      mergeAllowedValues(DEFAULT_NOUNS, options.allowedNouns),
+    );
 
     return {
       JSXAttribute(node: Rule.Node) {

@@ -24,54 +24,90 @@ describe('jsx-bem-compound-naming', () => {
         const ButtonGroup = () => null;
         const ButtonGroupItem = () => null;
         const ButtonGroupIcon = () => null;
-        <ButtonGroup />;
-        <ButtonGroupItem />;
-        <ButtonGroupIcon />;
+        export { ButtonGroup, ButtonGroupItem, ButtonGroupIcon };
       `,
       `
-        import { ButtonGroup } from './button-group';
+        const ButtonGroup = () => null;
         const ButtonGroupItem = () => null;
-        <ButtonGroupItem />;
+        export { ButtonGroup as Root, ButtonGroupItem as Item };
       `,
-      '<div />',
+      `
+        const Button = () => null;
+        const Item = () => null;
+        export { Button, Item };
+      `,
+      {
+        filename: '/tmp/index.tsx',
+        code: `
+          const Group = () => null;
+          const Item = () => null;
+          export { Group, Item };
+        `,
+      },
+      `
+        export { ButtonGroup, ButtonGroupItem } from './button-group';
+      `,
     ],
     invalid: [
       {
         code: `
-          const Group = () => null;
+          const ButtonGroup = () => null;
           const Item = () => null;
           const GroupItemIcon = () => null;
-          <Item />;
-          <GroupItemIcon />;
+          export { ButtonGroup, Item, GroupItemIcon };
         `,
+        filename: '/tmp/button-group.tsx',
         errors: [
           {
-            messageId: 'genericPartName',
+            messageId: 'exportedPartMustUseBlockPrefix',
             data: {
               name: 'Item',
+              block: 'ButtonGroup',
               example: 'ButtonGroupItem',
             },
           },
           {
-            messageId: 'missingBlockComponent',
+            messageId: 'exportedPartMustUseBlockPrefix',
             data: {
               name: 'GroupItemIcon',
-              block: 'GroupItem',
+              block: 'ButtonGroup',
+              example: 'ButtonGroupGroupItemIcon',
             },
           },
         ],
       },
       {
         code: `
-          const GroupIcon = () => null;
-          <GroupIcon />;
+          const ButtonGroup = () => null;
+          const Item = () => null;
+          export { ButtonGroup, Item as ButtonGroupItem };
         `,
+        filename: '/tmp/button-group.tsx',
         errors: [
           {
-            messageId: 'missingBlockComponent',
+            messageId: 'exportedPartMustUseBlockPrefix',
             data: {
-              name: 'GroupIcon',
-              block: 'Group',
+              name: 'Item',
+              block: 'ButtonGroup',
+              example: 'ButtonGroupItem',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          const ButtonGroup = () => null;
+          export function Item() { return null; }
+          export { ButtonGroup };
+        `,
+        filename: '/tmp/button-group.tsx',
+        errors: [
+          {
+            messageId: 'exportedPartMustUseBlockPrefix',
+            data: {
+              name: 'Item',
+              block: 'ButtonGroup',
+              example: 'ButtonGroupItem',
             },
           },
         ],

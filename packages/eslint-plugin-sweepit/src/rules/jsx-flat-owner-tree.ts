@@ -1,6 +1,10 @@
 import type { Rule } from 'eslint';
 
-const MIN_REPORTED_CHAIN_DEPTH = 3;
+const DEFAULT_ALLOWED_CHAIN_DEPTH = 2;
+
+interface RuleOptions {
+  allowedChainDepth?: number;
+}
 
 interface ComponentRecord {
   name: string;
@@ -98,12 +102,13 @@ function computeChainDepth(
   components: Map<string, ComponentRecord>,
   memo: Map<string, number>,
   visiting: Set<string>,
+  minReportedChainDepth: number,
 ): number {
   const cached = memo.get(componentName);
   if (cached != null) return cached;
 
   if (visiting.has(componentName)) {
-    return MIN_REPORTED_CHAIN_DEPTH;
+    return minReportedChainDepth;
   }
   visiting.add(componentName);
 
@@ -123,7 +128,13 @@ function computeChainDepth(
   let depth = 1;
   for (const childName of component.selfClosingCustomChildren) {
     if (!components.has(childName)) continue;
-    const childDepth = 1 + computeChainDepth(childName, components, memo, visiting);
+    const childDepth = 1 + computeChainDepth(
+      childName,
+      components,
+      memo,
+      visiting,
+      minReportedChainDepth,
+    );
     if (childDepth > depth) depth = childDepth;
   }
   memo.set(componentName, depth);
@@ -136,15 +147,34 @@ const rule: Rule.RuleModule = {
     type: 'suggestion',
     docs: {
       description:
-        'Encourage flatter parent component chains by reporting 3+ deep self-closing custom component handoffs',
+        'Encourage flatter parent component chains by reporting self-closing custom component handoffs deeper than allowedChainDepth',
     },
     messages: {
       deepParentTree:
         "Component '{{component}}' is part of a {{depth}}-deep parent-component chain of self-closing custom-component handoffs. Flatten the chain by reducing intermediate relay components.",
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          allowedChainDepth: {
+            type: 'integer',
+            minimum: 1,
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
   },
   create(context) {
+    const rawOptions = (context.options[0] as RuleOptions | undefined) ?? {};
+    const allowedChainDepthRaw = rawOptions.allowedChainDepth;
+    const allowedChainDepth =
+      Number.isInteger(allowedChainDepthRaw) && (allowedChainDepthRaw ?? 0) >= 1
+        ? (allowedChainDepthRaw as number)
+        : DEFAULT_ALLOWED_CHAIN_DEPTH;
+    const minReportedChainDepth = allowedChainDepth + 1;
+
     const components = new Map<string, ComponentRecord>();
 
     function registerComponent(
@@ -193,8 +223,14 @@ const rule: Rule.RuleModule = {
       'Program:exit'() {
         const memo = new Map<string, number>();
         for (const component of components.values()) {
-          const depth = computeChainDepth(component.name, components, memo, new Set<string>());
-          if (depth < MIN_REPORTED_CHAIN_DEPTH) continue;
+          const depth = computeChainDepth(
+            component.name,
+            components,
+            memo,
+            new Set<string>(),
+            minReportedChainDepth,
+          );
+          if (depth < minReportedChainDepth) continue;
 
           context.report({
             node: component.node,
