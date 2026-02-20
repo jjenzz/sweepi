@@ -12,6 +12,8 @@ import jsxOnNounVerbHandlerProps from './rules/jsx-on-noun-verb-handler-props';
 import noRenderHelperFunctions from './rules/no-render-helper-functions';
 import noElementProps from './rules/no-element-props';
 import noComponentTypeProps from './rules/no-componenttype-props';
+import noObjectProps from './rules/no-object-props';
+import noArrayProps from './rules/no-array-props';
 
 const plugin: ESLint.Plugin = {
   meta: {
@@ -31,6 +33,8 @@ const plugin: ESLint.Plugin = {
     'no-render-helper-functions': noRenderHelperFunctions,
     'no-element-props': noElementProps,
     'no-componenttype-props': noComponentTypeProps,
+    'no-object-props': noObjectProps,
+    'no-array-props': noArrayProps,
   },
   configs: {},
 };
