@@ -18,6 +18,7 @@ Object props often couple components to data models and business-layer shapes.
   - Expressions whose TypeScript type resolves to an object (for example identifiers, member access, and function calls returning objects).
 - **Allowed**:
   - Primitive values.
+  - `style` object values (`style={{ ... }}` or `style={styleObject}`).
   - Function values (for event handlers, callbacks, etc.).
   - Non-object expressions.
 
@@ -30,14 +31,14 @@ This rule has no options.
 ### Incorrect
 
 ```tsx
-<Card style={{ color: 'red' }} />
-<UserRow user={userRow} />
+<UserCard user={userRow} />
 <Card config={getCardConfig()} />
 ```
 
 ### Correct
 
 ```tsx
+<Card style={{ color: 'red' }} />
 <Card tone="info" elevation={2} />
 <UserRow name={user.name} email={user.email} />
 <Dialog onOpenChange={onOpenChange} />

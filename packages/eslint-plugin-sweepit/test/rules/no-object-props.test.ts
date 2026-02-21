@@ -25,35 +25,19 @@ describe('no-object-props', () => {
   ruleTester.run('no-object-props', rule, {
     valid: [
       '<Comp tone="info" />',
+      '<Comp style={{ color: "red" }} />',
+      'type CardStyle = { color: string }; const style: CardStyle = { color: "red" }; <Comp style={style} />',
       '<Comp onValueChange={onValueChange} />',
       '<Comp count={totalCount} />',
       '<Comp />',
     ],
     invalid: [
       {
-        code: '<Comp style={{ color: "red" }} />',
-        errors: [
-          {
-            messageId: 'noObjectProps',
-            data: { prop: 'style' },
-          },
-        ],
-      },
-      {
         code: '<Comp options={{ dense: true, interactive: false }} />',
         errors: [
           {
             messageId: 'noObjectProps',
             data: { prop: 'options' },
-          },
-        ],
-      },
-      {
-        code: 'type CardStyle = { color: string }; const style: CardStyle = { color: "red" }; <Comp style={style} />',
-        errors: [
-          {
-            messageId: 'noObjectProps',
-            data: { prop: 'style' },
           },
         ],
       },

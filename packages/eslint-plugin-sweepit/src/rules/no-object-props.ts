@@ -72,6 +72,7 @@ const rule: Rule.RuleModule = {
           value?: { type?: string } | null;
         };
         if (attr.name?.type !== 'JSXIdentifier' || !attr.name.name) return;
+        if (attr.name.name === 'style') return;
         if (!attr.value || attr.value.type !== 'JSXExpressionContainer') return;
 
         const expression = (attr.value as JSXExpressionContainer).expression;
