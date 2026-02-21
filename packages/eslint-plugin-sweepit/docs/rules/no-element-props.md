@@ -1,20 +1,19 @@
 # Disallow element-typed props except children/render (`no-element-props`)
 
-In TypeScript interfaces and types for component props, disallow `ReactNode`-typed props except `children`, and disallow `ReactElement`-typed props except `render`.
+In TypeScript interfaces and types for component props, disallow `ReactNode`/`ReactElement`-typed props except `children` and `render`.
 
 ## Why
 
 Arbitrary element props can turn components into passthrough containers with unclear boundaries.
-Restricting to `children` and `render` preserves explicit composition points and reduces API sprawl.
+Restricting to `children`/`render` preserves explicit composition points and reduces API sprawl.
 
 ## Rule Details
 
 - **Target**: `TSInterfaceDeclaration` and `TSTypeAliasDeclaration` with object-like type bodies.
 - **ReactNode**: Props that resolve to React's `ReactNode` type are forbidden unless the prop name is `children`.
-- **ReactElement**: Props that resolve to React's `ReactElement` type are forbidden unless the prop name is `render`.
-- **Render prop union**: `render` can be a `ReactElement`, or a function that returns a `ReactNode`/`ReactElement` (including aliases/wrapper type aliases that resolve to those React types).
+- **ReactElement**: Props that resolve to React's `ReactElement` type are treated the same way and are only allowed on `children` or `render`.
 
-Custom ReactNode props encourage passing arbitrary JSX through props, which can make components harder to reason about. Prefer `children` for composition. ReactElement props are typically used for render props; only the conventional `render` name is allowed.
+Custom element-typed props encourage passing arbitrary JSX through props, which can make components harder to reason about. Prefer `children`, and use `render` when polymorphic render-slot style APIs are intentional.
 
 ## Options
 
@@ -28,14 +27,13 @@ This rule has no options.
 interface CardProps {
   header: React.ReactNode; // ReactNode only allowed for children
   footer?: ReactNode;
-  render: ReactNode; // ReactNode not allowed for render (use ReactElement)
+  slot: ReactNode; // not allowed
 }
 
 type ModalProps = {
   title: ReactNode;
   content: React.ReactNode;
-  header: ReactElement; // ReactElement only allowed for render
-  children: ReactElement; // ReactElement not allowed for children (use ReactNode)
+  header: ReactElement; // not allowed
 };
 ```
 
@@ -44,21 +42,21 @@ type ModalProps = {
 ```tsx
 interface CardProps {
   children: ReactNode;
-  render?: ReactElement | (() => ReactNode);
+  render?: ReactNode;
 }
 
-type RenderProp = ReactElement | (() => ReactNode);
-
 interface ModalProps {
-  render?: RenderProp;
+  children?: ReactElement;
+  render?: ReactElement;
 }
 ```
 
 ## How To Fix
 
-1. Replace non-`children` `ReactNode` props with explicit composition APIs.
-2. Restrict `ReactElement` props to `render` only (or rename accordingly).
-3. Keep `children` as the primary arbitrary-content slot.
+1. Replace non-`children`/`render` element-typed props with explicit composition APIs.
+2. Keep `children` as the primary arbitrary-content slot.
+3. Use `render` when polymorphic rendering behavior is intentional.
+4. Move variant structures into compound component parts where needed.
 
 ```tsx
 // before
@@ -74,4 +72,4 @@ interface CardProps {
 
 ## When Not To Use It
 
-Disable this rule if your design system or component library intentionally uses multiple ReactNode-typed props (e.g. `header`, `footer`, `sidebar`) or ReactElement props with non-`render` names, and the team accepts that pattern.
+Disable this rule if your design system or component library intentionally uses multiple element-typed props (for example `header`, `footer`, `sidebar`) and the team accepts that pattern.

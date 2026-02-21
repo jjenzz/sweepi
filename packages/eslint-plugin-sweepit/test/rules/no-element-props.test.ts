@@ -24,16 +24,16 @@ const ruleTester = new RuleTester({
 describe('no-element-props', () => {
   ruleTester.run('no-element-props', rule, {
     valid: [
-      // ReactNode: children allowed
+      // Element-typed props: children allowed
       "import type React from 'react'; interface Props { children: React.ReactNode; }",
       "import type { ReactNode } from 'react'; interface Props { children?: ReactNode; }",
       "import type React from 'react'; type Props = { children: React.ReactNode };",
-      // ReactElement: render allowed
+      "import type { ReactElement } from 'react'; interface Props { children: ReactElement; }",
+      "import type React from 'react'; interface Props { children?: React.ReactElement; }",
+      "import type { ReactElement } from 'react'; type Props = { children: ReactElement };",
+      "import type { ReactNode } from 'react'; interface Props { render: ReactNode; }",
       "import type { ReactElement } from 'react'; interface Props { render: ReactElement; }",
-      "import type React from 'react'; interface Props { render?: React.ReactElement; }",
-      "import type { ReactElement } from 'react'; type Props = { render: ReactElement };",
       "import type { ReactElement, ReactNode } from 'react'; interface Props { render?: ReactElement | (() => ReactNode); }",
-      "import type { ReactElement, ReactNode } from 'react'; type RenderProp = ReactElement | (() => ReactNode); interface Props { render?: RenderProp; }",
       // Non-element props
       'interface Props { title: string; count: number; }',
     ],
@@ -43,7 +43,7 @@ describe('no-element-props', () => {
         code: "import type React from 'react'; interface Props { header: React.ReactNode; }",
         errors: [
           {
-            messageId: 'noElementPropsReactNode',
+            messageId: 'noElementProps',
             data: { prop: 'header' },
           },
         ],
@@ -52,7 +52,7 @@ describe('no-element-props', () => {
         code: "import type { ReactNode } from 'react'; interface Props { footer?: ReactNode; }",
         errors: [
           {
-            messageId: 'noElementPropsReactNode',
+            messageId: 'noElementProps',
             data: { prop: 'footer' },
           },
         ],
@@ -61,27 +61,17 @@ describe('no-element-props', () => {
         code: "import type React from 'react'; type Props = { content: React.ReactNode };",
         errors: [
           {
-            messageId: 'noElementPropsReactNode',
+            messageId: 'noElementProps',
             data: { prop: 'content' },
           },
         ],
       },
-      // ReactNode: render is no longer allowed (only children)
-      {
-        code: "import type { ReactNode } from 'react'; interface Props { render: ReactNode; }",
-        errors: [
-          {
-            messageId: 'noElementPropsReactNode',
-            data: { prop: 'render' },
-          },
-        ],
-      },
-      // ReactElement: disallow non-render
+      // ReactElement: disallow non-children
       {
         code: "import type { ReactElement } from 'react'; interface Props { header: ReactElement; }",
         errors: [
           {
-            messageId: 'noElementPropsReactElement',
+            messageId: 'noElementProps',
             data: { prop: 'header' },
           },
         ],
@@ -90,7 +80,7 @@ describe('no-element-props', () => {
         code: "import type React from 'react'; interface Props { footer?: React.ReactElement; }",
         errors: [
           {
-            messageId: 'noElementPropsReactElement',
+            messageId: 'noElementProps',
             data: { prop: 'footer' },
           },
         ],
@@ -99,18 +89,8 @@ describe('no-element-props', () => {
         code: "import type { ReactElement } from 'react'; type Props = { content: ReactElement };",
         errors: [
           {
-            messageId: 'noElementPropsReactElement',
+            messageId: 'noElementProps',
             data: { prop: 'content' },
-          },
-        ],
-      },
-      // ReactElement: children is not allowed (only render)
-      {
-        code: "import type { ReactElement } from 'react'; interface Props { children: ReactElement; }",
-        errors: [
-          {
-            messageId: 'noElementPropsReactElement',
-            data: { prop: 'children' },
           },
         ],
       },
@@ -118,7 +98,7 @@ describe('no-element-props', () => {
         code: "import type { ReactElement, ReactNode } from 'react'; type Slot = ReactElement; interface Props { header: Slot; render?: ReactElement | (() => ReactNode); }",
         errors: [
           {
-            messageId: 'noElementPropsReactElement',
+            messageId: 'noElementProps',
             data: { prop: 'header' },
           },
         ],

@@ -63,13 +63,11 @@ const rule: Rule.RuleModule = {
 		type: "suggestion",
 		docs: {
 			description:
-				"Disallow ReactNode-typed props except children and ReactElement-typed props except render.",
+				"Disallow ReactNode/ReactElement-typed props except children/render.",
 		},
 		messages: {
-			noElementPropsReactNode:
-				"Prop '{{prop}}' has type ReactNode. Use compound composition instead: expose parts and compose via 'children' (for example <Card><Card.Header /></Card>) rather than passing '{{prop}}' as an element prop.",
-			noElementPropsReactElement:
-				"Prop '{{prop}}' has type ReactElement. Use compound composition instead: expose parts and compose via 'children' (for example <Card><Card.Header /></Card>) rather than passing '{{prop}}' as an element prop.",
+			noElementProps:
+				"Prop '{{prop}}' has an element type (ReactNode/ReactElement). Use compound composition instead: expose parts and compose via 'children' (for example <Card><Card.Header /></Card>) rather than passing '{{prop}}' as an element prop.",
 		},
 		schema: [],
 	},
@@ -150,69 +148,6 @@ const rule: Rule.RuleModule = {
 				return astContainsReactType(
 					wrapped.typeAnnotation,
 					reactTypeName,
-					visitedAliases,
-				);
-			}
-
-			return false;
-		}
-
-		function astIsFunctionReturningReactNodeOrElement(
-			typeNode: unknown,
-			visitedAliases: Set<string>,
-		): boolean {
-			if (!typeNode || typeof typeNode !== "object") return false;
-			const node = typeNode as Record<string, unknown>;
-
-			if (node.type === "TSUnionType" || node.type === "TSIntersectionType") {
-				const unionNode = node as { types?: unknown[] };
-				return (unionNode.types ?? []).some((entry) =>
-					astIsFunctionReturningReactNodeOrElement(entry, visitedAliases),
-				);
-			}
-
-			if (node.type === "TSFunctionType") {
-				const functionType = node as {
-					returnType?: { typeAnnotation?: unknown };
-				};
-				const returnType = functionType.returnType?.typeAnnotation;
-				return (
-					astContainsReactType(
-						returnType,
-						"ReactNode",
-						new Set(visitedAliases),
-					) ||
-					astContainsReactType(
-						returnType,
-						"ReactElement",
-						new Set(visitedAliases),
-					)
-				);
-			}
-
-			if (node.type === "TSTypeReference") {
-				const ref = node as unknown as TSTypeReferenceNode;
-				const typeName = getTypeNameFromRef(ref);
-				if (
-					typeName &&
-					aliasTypeMap.has(typeName) &&
-					!visitedAliases.has(typeName)
-				) {
-					visitedAliases.add(typeName);
-					return astIsFunctionReturningReactNodeOrElement(
-						aliasTypeMap.get(typeName),
-						visitedAliases,
-					);
-				}
-			}
-
-			if (
-				node.type === "TSOptionalType" ||
-				node.type === "TSParenthesizedType"
-			) {
-				const wrapped = node as { typeAnnotation?: unknown };
-				return astIsFunctionReturningReactNodeOrElement(
-					wrapped.typeAnnotation,
 					visitedAliases,
 				);
 			}
@@ -349,41 +284,6 @@ const rule: Rule.RuleModule = {
 			return false;
 		}
 
-		function isFunctionReturningReactNodeOrElement(
-			type: ts.Type | undefined,
-		): boolean {
-			if (!type || !checker) return false;
-			if (type.isUnionOrIntersection()) {
-				return type.types.some((entry) =>
-					isFunctionReturningReactNodeOrElement(entry),
-				);
-			}
-
-			const callSignatures = checker.getSignaturesOfType(
-				type,
-				ts.SignatureKind.Call,
-			);
-			if (callSignatures.length === 0) return false;
-
-			return callSignatures.some((signature: ts.Signature) => {
-				const returnType = checker.getReturnTypeOfSignature(signature);
-				return (
-					typeContainsReactType(
-						returnType,
-						"ReactNode",
-						new Set(),
-						new Set(),
-					) ||
-					typeContainsReactType(
-						returnType,
-						"ReactElement",
-						new Set(),
-						new Set(),
-					)
-				);
-			});
-		}
-
 		function getTypeAtProp(prop: TSPropertySignatureNode): ts.Type | null {
 			if (!checker) return null;
 			const typeNode = prop.typeAnnotation?.typeAnnotation;
@@ -406,17 +306,6 @@ const rule: Rule.RuleModule = {
 				(propType
 					? typeContainsReactType(propType, "ReactNode", new Set(), new Set())
 					: false) || astContainsReactType(typeAnn, "ReactNode", new Set());
-			if (hasReactNodeType) {
-				if (name !== "children") {
-					context.report({
-						node: reportNode,
-						messageId: "noElementPropsReactNode",
-						data: { prop: name },
-					});
-				}
-				return;
-			}
-
 			const hasReactElementType =
 				(propType
 					? typeContainsReactType(
@@ -426,18 +315,14 @@ const rule: Rule.RuleModule = {
 							new Set(),
 						)
 					: false) || astContainsReactType(typeAnn, "ReactElement", new Set());
-			const isAllowedRenderFunction =
-				name === "render" &&
-				((propType ? isFunctionReturningReactNodeOrElement(propType) : false) ||
-					astIsFunctionReturningReactNodeOrElement(typeAnn, new Set()));
-			if (hasReactElementType && !isAllowedRenderFunction) {
-				if (name !== "render") {
-					context.report({
-						node: reportNode,
-						messageId: "noElementPropsReactElement",
-						data: { prop: name },
-					});
-				}
+
+			const hasElementType = hasReactNodeType || hasReactElementType;
+			if (hasElementType && name !== "children" && name !== "render") {
+				context.report({
+					node: reportNode,
+					messageId: "noElementProps",
+					data: { prop: name },
+				});
 			}
 		}
 
