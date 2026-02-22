@@ -1,5 +1,4 @@
 import type { Rule } from "eslint";
-import ts from "typescript";
 
 interface TSPropertySignatureNode {
 	type: string;
@@ -73,26 +72,6 @@ const rule: Rule.RuleModule = {
 		schema: [],
 	},
 	create(context) {
-		const parserServices =
-			(
-				context.sourceCode as {
-					parserServices?: {
-						program?: ts.Program;
-						getTypeAtLocation?: (node: unknown) => ts.Type;
-						esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-					};
-				}
-			).parserServices ??
-			(
-				context as Rule.RuleContext & {
-					parserServices?: {
-						program?: ts.Program;
-						getTypeAtLocation?: (node: unknown) => ts.Type;
-						esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-					};
-				}
-			).parserServices;
-		const checker = parserServices?.program?.getTypeChecker();
 		const aliasTypeMap = new Map<string, unknown>();
 
 		function getTypeNameFromRef(node: TSTypeReferenceNode): string | null {
@@ -156,166 +135,12 @@ const rule: Rule.RuleModule = {
 			return false;
 		}
 
-		function isReactSymbol(
-			symbol: ts.Symbol | undefined,
-			name: string,
-		): boolean {
-			if (!symbol || symbol.getName() !== name) return false;
-			return (
-				symbol.declarations?.some((declaration) =>
-					declaration.getSourceFile().fileName.includes("/react/"),
-				) ?? false
-			);
-		}
-
-		function symbolContainsReactType(
-			symbol: ts.Symbol | undefined,
-			reactTypeName: "ReactNode" | "ReactElement",
-			visitedSymbols: Set<ts.Symbol>,
-			visitedTypes: Set<ts.Type>,
-		): boolean {
-			if (!symbol || !checker) return false;
-			if (visitedSymbols.has(symbol)) return false;
-			visitedSymbols.add(symbol);
-
-			if (isReactSymbol(symbol, reactTypeName)) return true;
-
-			if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
-				const aliased = checker.getAliasedSymbol(symbol);
-				if (
-					symbolContainsReactType(
-						aliased,
-						reactTypeName,
-						visitedSymbols,
-						visitedTypes,
-					)
-				)
-					return true;
-			}
-
-			if ((symbol.flags & ts.SymbolFlags.TypeAlias) !== 0) {
-				const declaredType = checker.getDeclaredTypeOfSymbol(symbol);
-				if (
-					typeContainsReactType(
-						declaredType,
-						reactTypeName,
-						visitedSymbols,
-						visitedTypes,
-					)
-				)
-					return true;
-			}
-
-			if ((symbol.flags & ts.SymbolFlags.Interface) !== 0) {
-				const declaredType = checker.getDeclaredTypeOfSymbol(symbol);
-				if (declaredType.flags & ts.TypeFlags.Object) {
-					const objectType = declaredType as ts.ObjectType;
-					for (const baseType of checker.getBaseTypes(
-						objectType as ts.InterfaceType,
-					) ?? []) {
-						if (
-							typeContainsReactType(
-								baseType,
-								reactTypeName,
-								visitedSymbols,
-								visitedTypes,
-							)
-						)
-							return true;
-					}
-				}
-			}
-
-			return false;
-		}
-
-		function typeContainsReactType(
-			type: ts.Type | undefined,
-			reactTypeName: "ReactNode" | "ReactElement",
-			visitedSymbols: Set<ts.Symbol>,
-			visitedTypes: Set<ts.Type>,
-		): boolean {
-			if (!type || !checker) return false;
-			if (visitedTypes.has(type)) return false;
-			visitedTypes.add(type);
-
-			if (type.isUnionOrIntersection()) {
-				return type.types.some((entry) =>
-					typeContainsReactType(
-						entry,
-						reactTypeName,
-						visitedSymbols,
-						visitedTypes,
-					),
-				);
-			}
-
-			if (
-				symbolContainsReactType(
-					type.aliasSymbol,
-					reactTypeName,
-					visitedSymbols,
-					visitedTypes,
-				)
-			)
-				return true;
-			if (
-				symbolContainsReactType(
-					type.getSymbol(),
-					reactTypeName,
-					visitedSymbols,
-					visitedTypes,
-				)
-			)
-				return true;
-
-			if ("target" in type) {
-				const target = (type as ts.TypeReference).target;
-				if (
-					typeContainsReactType(
-						target,
-						reactTypeName,
-						visitedSymbols,
-						visitedTypes,
-					)
-				)
-					return true;
-			}
-
-			return false;
-		}
-
-		function getTypeAtProp(prop: TSPropertySignatureNode): ts.Type | null {
-			if (!checker) return null;
-			const typeNode = prop.typeAnnotation?.typeAnnotation;
-			if (!typeNode) return null;
-			if (parserServices?.getTypeAtLocation) {
-				return parserServices.getTypeAtLocation(typeNode);
-			}
-			if (!parserServices?.esTreeNodeToTSNodeMap) return null;
-			const tsNode = parserServices.esTreeNodeToTSNodeMap.get(typeNode);
-			if (!tsNode) return null;
-			return checker.getTypeAtLocation(tsNode);
-		}
-
 		function checkProp(prop: TSPropertySignatureNode, reportNode: Rule.Node) {
 			const name = getPropKeyName(prop);
 			if (!name) return;
 			const typeAnn = prop.typeAnnotation?.typeAnnotation;
-			const propType = getTypeAtProp(prop);
-			const hasReactNodeType =
-				(propType
-					? typeContainsReactType(propType, "ReactNode", new Set(), new Set())
-					: false) || astContainsReactType(typeAnn, "ReactNode", new Set());
-			const hasReactElementType =
-				(propType
-					? typeContainsReactType(
-							propType,
-							"ReactElement",
-							new Set(),
-							new Set(),
-						)
-					: false) || astContainsReactType(typeAnn, "ReactElement", new Set());
+			const hasReactNodeType = astContainsReactType(typeAnn, "ReactNode", new Set());
+			const hasReactElementType = astContainsReactType(typeAnn, "ReactElement", new Set());
 
 			const hasElementType = hasReactNodeType || hasReactElementType;
 			if (hasElementType && name !== "children" && name !== "render") {

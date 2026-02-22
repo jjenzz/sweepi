@@ -1,5 +1,4 @@
 import type { Rule } from 'eslint';
-import ts from 'typescript';
 
 interface IdentifierLike {
   type: 'Identifier';
@@ -68,53 +67,6 @@ function isBooleanLikeType(typeNode: Rule.Node | undefined): boolean {
   return false;
 }
 
-function getParserServices(context: Rule.RuleContext): {
-  program?: ts.Program;
-  esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-} | null {
-  return (
-    (
-      context.sourceCode as {
-        parserServices?: {
-          program?: ts.Program;
-          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-        };
-      }
-    ).parserServices ??
-    (
-      context as Rule.RuleContext & {
-        parserServices?: {
-          program?: ts.Program;
-          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-        };
-      }
-    ).parserServices ??
-    null
-  );
-}
-
-function isBooleanLikeTypeFromTypeChecker(
-  typeNode: Rule.Node | undefined,
-  checker: ts.TypeChecker | undefined,
-  parserServices: { esTreeNodeToTSNodeMap?: Map<unknown, ts.Node> } | null,
-): boolean {
-  if (!typeNode || !checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
-  const tsNode = parserServices.esTreeNodeToTSNodeMap.get(typeNode);
-  if (!tsNode) return false;
-  const resolvedType = checker.getTypeAtLocation(tsNode);
-
-  function isBooleanType(type: ts.Type): boolean {
-    if (type.isUnionOrIntersection()) {
-      return type.types.some((member) => isBooleanType(member));
-    }
-    if ((type.flags & ts.TypeFlags.Boolean) !== 0) return true;
-    if ((type.flags & ts.TypeFlags.BooleanLiteral) !== 0) return true;
-    return false;
-  }
-
-  return isBooleanType(resolvedType);
-}
-
 function isHandlerPropName(name: string): boolean {
   if (!name.startsWith('on') || name.length <= 2) return false;
   const firstCharAfterPrefix = name[2];
@@ -163,9 +115,6 @@ const rule: Rule.RuleModule = {
     schema: [],
   },
   create(context) {
-    const parserServices = getParserServices(context);
-    const checker = parserServices?.program?.getTypeChecker();
-
     function checkMembers(members: Rule.Node[]) {
       const booleanProps: Array<{ name: string; node: TSPropertySignatureNode }> = [];
       const handlerProps = new Set<string>();
@@ -183,12 +132,7 @@ const rule: Rule.RuleModule = {
           continue;
         }
 
-        if (
-          !isBooleanLikeType(typeNode) &&
-          !isBooleanLikeTypeFromTypeChecker(typeNode, checker, parserServices)
-        ) {
-          continue;
-        }
+        if (!isBooleanLikeType(typeNode)) continue;
         booleanProps.push({ name: propName, node: maybeProperty });
       }
 

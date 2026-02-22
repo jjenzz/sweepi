@@ -1,5 +1,4 @@
 import type { Rule } from 'eslint';
-import ts from 'typescript';
 
 interface TSPropertySignatureNode {
   type: string;
@@ -78,74 +77,6 @@ function isComponentTypeProp(
   return false;
 }
 
-function getParserServices(context: Rule.RuleContext): {
-  program?: ts.Program;
-  esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-} | null {
-  return (
-    (
-      context.sourceCode as {
-        parserServices?: {
-          program?: ts.Program;
-          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-        };
-      }
-    ).parserServices ??
-    (
-      context as Rule.RuleContext & {
-        parserServices?: {
-          program?: ts.Program;
-          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
-        };
-      }
-    ).parserServices ??
-    null
-  );
-}
-
-function isForbiddenSymbolName(symbol: ts.Symbol | undefined): boolean {
-  if (!symbol) return false;
-  return FORBIDDEN_TYPE_NAMES.has(symbol.getName());
-}
-
-function isForbiddenComponentType(
-  type: ts.Type,
-  checker: ts.TypeChecker,
-  seenSymbols: Set<ts.Symbol>,
-): boolean {
-  if (type.isUnionOrIntersection()) {
-    return type.types.some((part) => isForbiddenComponentType(part, checker, seenSymbols));
-  }
-
-  if (isForbiddenSymbolName(type.aliasSymbol) || isForbiddenSymbolName(type.getSymbol())) {
-    return true;
-  }
-
-  const symbol = type.aliasSymbol ?? type.getSymbol();
-  if (!symbol || seenSymbols.has(symbol)) return false;
-  seenSymbols.add(symbol);
-
-  const declarations = symbol.getDeclarations() ?? [];
-  for (const declaration of declarations) {
-    if (ts.isTypeAliasDeclaration(declaration)) {
-      const aliasedType = checker.getTypeFromTypeNode(declaration.type);
-      if (isForbiddenComponentType(aliasedType, checker, seenSymbols)) return true;
-      continue;
-    }
-    if (ts.isInterfaceDeclaration(declaration)) {
-      const heritageClauses = declaration.heritageClauses ?? [];
-      for (const heritageClause of heritageClauses) {
-        for (const heritageType of heritageClause.types) {
-          const heritageTsType = checker.getTypeAtLocation(heritageType);
-          if (isForbiddenComponentType(heritageTsType, checker, seenSymbols)) return true;
-        }
-      }
-    }
-  }
-
-  return false;
-}
-
 function getPropKeyName(prop: TSPropertySignatureNode): string | null {
   const key = prop.key;
   if (key.type === 'Identifier' && 'name' in key) return key.name ?? null;
@@ -181,17 +112,7 @@ const rule: Rule.RuleModule = {
     schema: [],
   },
   create(context) {
-    const parserServices = getParserServices(context);
-    const checker = parserServices?.program?.getTypeChecker();
     const localTypeAliases = new Map<string, unknown>();
-
-    function isComponentTypePropByResolvedType(typeNode: unknown): boolean {
-      if (!checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(typeNode);
-      if (!tsNode) return false;
-      const resolvedType = checker.getTypeAtLocation(tsNode);
-      return isForbiddenComponentType(resolvedType, checker, new Set<ts.Symbol>());
-    }
 
     function checkProp(prop: TSPropertySignatureNode) {
       const name = getPropKeyName(prop);
@@ -202,8 +123,7 @@ const rule: Rule.RuleModule = {
         !isComponentTypeProp(
           typeAnn,
           (aliasName) => localTypeAliases.get(aliasName) ?? null,
-        ) &&
-        !isComponentTypePropByResolvedType(typeAnn)
+        )
       ) {
         return;
       }
