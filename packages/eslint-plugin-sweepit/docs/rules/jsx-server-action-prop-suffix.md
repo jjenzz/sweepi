@@ -69,9 +69,3 @@ interface FormProps {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if:
-
-- Your codebase intentionally allows async function contracts on non-`action` props.
-- You use a different naming scheme for action-like async callback props.

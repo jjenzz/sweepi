@@ -45,6 +45,3 @@ This rule has no options.
 <Button helloWorld={handler} />
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase intentionally uses TitleCase prop names and cannot migrate to camelCase.

@@ -51,6 +51,3 @@ interface EditorProps {
 2. If boolean flags are only toggling variants, split them into explicit composed variants.
 3. Keep state transitions explicit through events rather than hidden conditional branches.
 
-## When Not To Use It
-
-Disable this rule if your team intentionally allows uncontrolled boolean props in component contracts.

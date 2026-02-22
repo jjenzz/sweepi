@@ -70,6 +70,3 @@ interface CardProps {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your design system or component library intentionally uses multiple element-typed props (for example `header`, `footer`, `sidebar`) and the team accepts that pattern.

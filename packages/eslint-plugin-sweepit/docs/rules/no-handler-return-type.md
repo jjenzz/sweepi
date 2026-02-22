@@ -69,6 +69,3 @@ interface DialogProps {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your component APIs intentionally encode return-value contracts in handler props and your team accepts the extra coupling that introduces.

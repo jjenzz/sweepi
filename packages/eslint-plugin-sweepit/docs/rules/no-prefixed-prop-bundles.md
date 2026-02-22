@@ -54,6 +54,3 @@ interface CardProps {
 2. If a simple API is still appropriate, pass explicit unprefixed props for what the component actually needs.
 3. If grouped data must be shared across parts, keep it in private context within the compound root.
 
-## When Not To Use It
-
-Disable this rule if your team intentionally prefers prefixed prop bundles across component APIs.

@@ -68,6 +68,3 @@ If array-shaped data truly must flow to multiple compound parts, prefer context 
 </Menu.Root>
 ```
 
-## When Not To Use It
-
-Disable this rule if your architecture intentionally uses array-shaped prop contracts.

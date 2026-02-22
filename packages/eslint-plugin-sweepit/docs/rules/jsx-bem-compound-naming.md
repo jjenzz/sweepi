@@ -68,6 +68,3 @@ export { ButtonGroup, Item, GroupItemIcon };
 export { ButtonGroup, ButtonGroupItem, ButtonGroupIcon };
 ```
 
-## When Not To Use It
-
-Disable this rule if your project intentionally mixes unrelated exported component names in files that share a block-like file stem.

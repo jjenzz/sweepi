@@ -82,6 +82,3 @@ The example below allows the `x-` prefix and one exact prop:
 <Component myCustomProp="value" />
 ```
 
-## When Not To Use It
-
-Disable this rule if your design system intentionally uses kebab-case custom props and the team accepts that naming convention.

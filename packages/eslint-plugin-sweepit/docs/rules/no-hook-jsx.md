@@ -103,6 +103,3 @@ function Header() {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase intentionally uses `use*` for render helpers or component factories and the team accepts that pattern.

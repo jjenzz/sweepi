@@ -60,6 +60,3 @@ function Card({ title }: { title: string }) {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your architecture intentionally uses prop relay wrappers as a primary API pattern.

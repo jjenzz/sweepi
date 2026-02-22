@@ -74,6 +74,3 @@ export interface DialogRootProps {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your architecture intentionally exposes context hooks as part of the public module API.

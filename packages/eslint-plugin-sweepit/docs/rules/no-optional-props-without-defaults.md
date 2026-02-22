@@ -48,6 +48,3 @@ function Button({ tone = 'primary' }: ButtonProps) {
 2. Move time/readiness checks higher in the tree before rendering the component.
 3. Keep component contracts strict and explicit.
 
-## When Not To Use It
-
-Disable this rule if your team intentionally allows optional component props without defaults.

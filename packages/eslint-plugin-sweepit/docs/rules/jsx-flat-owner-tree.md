@@ -143,6 +143,3 @@ function Root() {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your architecture intentionally relies on deep owner trees and you accept the resulting complexity.

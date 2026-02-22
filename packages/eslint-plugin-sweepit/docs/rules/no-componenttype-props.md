@@ -74,6 +74,3 @@ interface ListProps {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase intentionally uses component-type props for dynamic component rendering (e.g. icon components, list item renderers) and the team accepts that pattern.

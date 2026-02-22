@@ -71,6 +71,3 @@ export { ButtonGroup, ButtonGroupItem };
 export { ButtonGroup as Root, ButtonGroupItem as Item };
 ```
 
-## When Not To Use It
-
-Disable this rule if your architecture intentionally uses alternative export contracts for compound modules.

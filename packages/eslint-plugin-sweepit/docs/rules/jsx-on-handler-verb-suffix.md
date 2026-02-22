@@ -83,6 +83,3 @@ With custom options:
 <Input onValueChange={handleChange} />
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase does not standardize `on*` handler names around verb suffixes.

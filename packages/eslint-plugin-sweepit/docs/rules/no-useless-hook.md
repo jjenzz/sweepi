@@ -69,6 +69,3 @@ function getConfig() {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase uses the `use*` prefix for non-hook utilities and the team accepts that convention.

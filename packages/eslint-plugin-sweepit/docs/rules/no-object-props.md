@@ -68,6 +68,3 @@ If object-shaped data truly must flow to multiple compound parts, prefer context
 </UserCard.Root>
 ```
 
-## When Not To Use It
-
-Disable this rule if your architecture intentionally uses object-shaped prop contracts.

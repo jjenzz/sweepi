@@ -90,6 +90,3 @@ function Header() {
 }
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase intentionally uses camelCase render helpers or factory functions that return JSX, and the team accepts that pattern.

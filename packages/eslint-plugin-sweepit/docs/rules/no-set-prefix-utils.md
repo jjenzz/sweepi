@@ -59,6 +59,3 @@ const setPrefix = (str: string) => str.toUpperCase();
 const applyPrefix = (str: string) => str.toUpperCase();
 ```
 
-## When Not To Use It
-
-Disable this rule if your codebase intentionally uses `set*` for non-React util/helper functions and the team accepts that naming convention.

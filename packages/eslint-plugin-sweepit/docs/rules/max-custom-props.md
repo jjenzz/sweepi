@@ -21,7 +21,7 @@ This rule encourages splitting large contracts into compound parts with clearer 
 {
   "threshold": 8,
   "ignore": ["children"]
-}
+} 
 ```
 
 - `threshold` (integer, minimum `1`, default `8`): maximum allowed custom prop count.
@@ -65,6 +65,3 @@ interface DashboardCardValueProps {
 2. Keep each part focused on one concern.
 3. Move repeated configuration into composition boundaries instead of adding more top-level props.
 
-## When Not To Use It
-
-Disable this rule if your team intentionally prefers broad prop contracts over composition.
