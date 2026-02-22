@@ -1,4 +1,5 @@
 import type { Rule } from 'eslint';
+import ts from 'typescript';
 
 interface TSPropertySignatureNode {
   type: string;
@@ -23,6 +24,7 @@ interface TSTypeLiteralNode {
 
 interface TSTypeAliasDeclarationNode {
   type: string;
+  id?: { type: string; name?: string };
   typeAnnotation: unknown;
 }
 
@@ -46,22 +48,100 @@ function getTypeNameFromRef(node: TSTypeReferenceNode): string | null {
   return null;
 }
 
-function isComponentTypeProp(typeNode: unknown): boolean {
+function isComponentTypeProp(
+  typeNode: unknown,
+  resolveAliasType?: (name: string) => unknown | null,
+  seenAliases: Set<string> = new Set<string>(),
+): boolean {
   if (!typeNode || typeof typeNode !== 'object') return false;
   const n = typeNode as Record<string, unknown>;
   if (n.type === 'TSTypeReference') {
     const ref = n as unknown as TSTypeReferenceNode;
     const name = getTypeNameFromRef(ref);
-    return name !== null && FORBIDDEN_TYPE_NAMES.has(name);
+    if (name !== null && FORBIDDEN_TYPE_NAMES.has(name)) return true;
+    if (!name || !resolveAliasType || seenAliases.has(name)) return false;
+    const aliasType = resolveAliasType(name);
+    if (!aliasType) return false;
+    const nextSeenAliases = new Set(seenAliases);
+    nextSeenAliases.add(name);
+    return isComponentTypeProp(aliasType, resolveAliasType, nextSeenAliases);
   }
   if (n.type === 'TSUnionType' || n.type === 'TSIntersectionType') {
     const union = n as { types?: unknown[] };
-    return (union.types ?? []).some((t) => isComponentTypeProp(t));
+    return (union.types ?? []).some((t) => isComponentTypeProp(t, resolveAliasType, seenAliases));
   }
   if (n.type === 'TSOptionalType') {
     const opt = n as { typeAnnotation?: unknown };
-    return isComponentTypeProp(opt.typeAnnotation);
+    return isComponentTypeProp(opt.typeAnnotation, resolveAliasType, seenAliases);
   }
+  return false;
+}
+
+function getParserServices(context: Rule.RuleContext): {
+  program?: ts.Program;
+  esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
+} | null {
+  return (
+    (
+      context.sourceCode as {
+        parserServices?: {
+          program?: ts.Program;
+          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
+        };
+      }
+    ).parserServices ??
+    (
+      context as Rule.RuleContext & {
+        parserServices?: {
+          program?: ts.Program;
+          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
+        };
+      }
+    ).parserServices ??
+    null
+  );
+}
+
+function isForbiddenSymbolName(symbol: ts.Symbol | undefined): boolean {
+  if (!symbol) return false;
+  return FORBIDDEN_TYPE_NAMES.has(symbol.getName());
+}
+
+function isForbiddenComponentType(
+  type: ts.Type,
+  checker: ts.TypeChecker,
+  seenSymbols: Set<ts.Symbol>,
+): boolean {
+  if (type.isUnionOrIntersection()) {
+    return type.types.some((part) => isForbiddenComponentType(part, checker, seenSymbols));
+  }
+
+  if (isForbiddenSymbolName(type.aliasSymbol) || isForbiddenSymbolName(type.getSymbol())) {
+    return true;
+  }
+
+  const symbol = type.aliasSymbol ?? type.getSymbol();
+  if (!symbol || seenSymbols.has(symbol)) return false;
+  seenSymbols.add(symbol);
+
+  const declarations = symbol.getDeclarations() ?? [];
+  for (const declaration of declarations) {
+    if (ts.isTypeAliasDeclaration(declaration)) {
+      const aliasedType = checker.getTypeFromTypeNode(declaration.type);
+      if (isForbiddenComponentType(aliasedType, checker, seenSymbols)) return true;
+      continue;
+    }
+    if (ts.isInterfaceDeclaration(declaration)) {
+      const heritageClauses = declaration.heritageClauses ?? [];
+      for (const heritageClause of heritageClauses) {
+        for (const heritageType of heritageClause.types) {
+          const heritageTsType = checker.getTypeAtLocation(heritageType);
+          if (isForbiddenComponentType(heritageTsType, checker, seenSymbols)) return true;
+        }
+      }
+    }
+  }
+
   return false;
 }
 
@@ -96,11 +176,32 @@ const rule: Rule.RuleModule = {
     schema: [],
   },
   create(context) {
+    const parserServices = getParserServices(context);
+    const checker = parserServices?.program?.getTypeChecker();
+    const localTypeAliases = new Map<string, unknown>();
+
+    function isComponentTypePropByResolvedType(typeNode: unknown): boolean {
+      if (!checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
+      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(typeNode);
+      if (!tsNode) return false;
+      const resolvedType = checker.getTypeAtLocation(tsNode);
+      return isForbiddenComponentType(resolvedType, checker, new Set<ts.Symbol>());
+    }
+
     function checkProp(prop: TSPropertySignatureNode) {
       const name = getPropKeyName(prop);
       if (!name) return;
       const typeAnn = prop.typeAnnotation?.typeAnnotation;
-      if (!isComponentTypeProp(typeAnn)) return;
+      if (!typeAnn) return;
+      if (
+        !isComponentTypeProp(
+          typeAnn,
+          (aliasName) => localTypeAliases.get(aliasName) ?? null,
+        ) &&
+        !isComponentTypePropByResolvedType(typeAnn)
+      ) {
+        return;
+      }
       context.report({
         node: prop.key as Rule.Node,
         messageId: 'noComponentTypeProps',
@@ -124,6 +225,10 @@ const rule: Rule.RuleModule = {
       },
       TSTypeAliasDeclaration(node: Rule.Node) {
         const decl = node as unknown as TSTypeAliasDeclarationNode;
+        const typeAliasName = decl.id?.name;
+        if (typeAliasName) {
+          localTypeAliases.set(typeAliasName, decl.typeAnnotation);
+        }
         const typeAnn = decl.typeAnnotation;
         if (typeAnn) {
           visitProps(getPropsFromTypeLiteral(typeAnn));

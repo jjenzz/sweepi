@@ -77,6 +77,24 @@ describe('no-componenttype-props', () => {
           },
         ],
       },
+      {
+        code: "import type { ComponentType } from 'react'; type IconComponent = ComponentType<{ size?: number }>; interface Props { Icon: IconComponent; }",
+        errors: [
+          {
+            messageId: 'noComponentTypeProps',
+            data: { prop: 'Icon' },
+          },
+        ],
+      },
+      {
+        code: "import type React from 'react'; type Slot<P> = React.ComponentType<P>; type HeaderSlot = Slot<{ title: string }>; type Props = { Header: HeaderSlot };",
+        errors: [
+          {
+            messageId: 'noComponentTypeProps',
+            data: { prop: 'Header' },
+          },
+        ],
+      },
     ],
   });
 });
