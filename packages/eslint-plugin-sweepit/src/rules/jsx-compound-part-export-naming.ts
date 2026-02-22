@@ -163,7 +163,7 @@ const rule: Rule.RuleModule = {
         }
       },
       'Program:exit'() {
-        const stem = getFileStem(context.getFilename());
+        const stem = getFileStem(context.filename);
         if (!stem) return;
         if (stem.toLowerCase() === 'index') return;
 
@@ -173,8 +173,9 @@ const rule: Rule.RuleModule = {
         if (componentExports.length < 2) return;
 
         const normalizedStem = normalizeForComparison(stem);
-        const blockCandidates = [...new Set([...localComponents, ...objectExports.map((e) => e.name)])]
-          .filter((name) => normalizeForComparison(name) === normalizedStem);
+        const blockCandidates = [
+          ...new Set([...localComponents, ...objectExports.map((e) => e.name)]),
+        ].filter((name) => normalizeForComparison(name) === normalizedStem);
         if (blockCandidates.length === 0) return;
 
         const block = blockCandidates[0];

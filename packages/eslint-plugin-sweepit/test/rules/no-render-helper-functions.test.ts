@@ -84,6 +84,25 @@ describe('no-render-helper-functions', () => {
           },
         ],
       },
+      // JSX inside control flow
+      {
+        code: 'function renderItem(show: boolean) { if (show) { return <Item />; } return null; }',
+        errors: [
+          {
+            messageId: 'noRenderHelperFunctions',
+            data: { name: 'renderItem' },
+          },
+        ],
+      },
+      {
+        code: 'function renderGuard() { try { return <Comp />; } catch { return null; } }',
+        errors: [
+          {
+            messageId: 'noRenderHelperFunctions',
+            data: { name: 'renderGuard' },
+          },
+        ],
+      },
     ],
   });
 });

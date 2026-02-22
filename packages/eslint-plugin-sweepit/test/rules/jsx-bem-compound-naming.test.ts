@@ -71,7 +71,7 @@ describe('jsx-bem-compound-naming', () => {
             data: {
               name: 'GroupItemIcon',
               block: 'ButtonGroup',
-              example: 'ButtonGroupGroupItemIcon',
+              example: 'ButtonGroupItemIcon',
             },
           },
         ],

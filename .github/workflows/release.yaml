@@ -20,5 +20,7 @@ jobs:
           token: ${{ secrets.AUTO_PAT_PROD }}
       - run: git fetch --unshallow --tags
       - uses: ./.github/actions/setup-repo
+      - run: npm whoami
+      - run: npm ping
       - run: pnpm build
       - run: pnpm release

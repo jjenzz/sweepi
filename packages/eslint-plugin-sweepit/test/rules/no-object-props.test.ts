@@ -2,6 +2,9 @@ import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
 import rule from '../../src/rules/no-object-props';
 import tsParser from '@typescript-eslint/parser';
+import { fileURLToPath } from 'node:url';
+
+const tsconfigRootDir = fileURLToPath(new URL('../../', import.meta.url));
 
 RuleTester.describe = describe;
 RuleTester.it = it;
@@ -14,9 +17,9 @@ const ruleTester = new RuleTester({
       sourceType: 'module',
       ecmaFeatures: { jsx: true },
       projectService: {
-        allowDefaultProject: ['estree.tsx'],
+        allowDefaultProject: ['estree.ts', 'estree.tsx'],
       },
-      tsconfigRootDir: process.cwd(),
+      tsconfigRootDir,
     },
   },
 });

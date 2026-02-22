@@ -12,6 +12,12 @@ Optional props are often used to represent "data not ready yet", which spreads n
 - **Reported**: Optional props in the component prop type that are not defaulted in the component parameter.
 - **Allowed**: Optional props with explicit defaults in destructured parameters.
 
+### Type Information
+
+This rule works without TypeScript project services by checking explicit local type declarations.
+
+When type information is enabled, optional-prop detection is more accurate for inferred and referenced types.
+
 ## Options
 
 This rule has no options.

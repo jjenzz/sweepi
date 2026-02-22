@@ -90,10 +90,7 @@ const rule: Rule.RuleModule = {
   create(context) {
     const options = (context.options[0] as RuleOptions | undefined) ?? {};
     const threshold = options.threshold ?? DEFAULT_THRESHOLD;
-    const ignoredProps = new Set<string>([
-      ...DEFAULT_IGNORED_PROPS,
-      ...(options.ignore ?? []),
-    ]);
+    const ignoredProps = new Set<string>([...DEFAULT_IGNORED_PROPS, ...(options.ignore ?? [])]);
 
     function checkContract(
       contractName: string | undefined,

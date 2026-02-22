@@ -1,9 +1,29 @@
 import type { Rule } from 'eslint';
 
-const HOOK_NAMES = new Set(['useState', 'useEffect', 'useReducer', 'useRef', 'useContext']);
+const HOOK_NAMES = new Set([
+  'useState',
+  'useEffect',
+  'useReducer',
+  'useRef',
+  'useContext',
+  'useLayoutEffect',
+  'useImperativeHandle',
+  'useDebugValue',
+  'useId',
+  'useSyncExternalStore',
+  'useTransition',
+  'useDeferredValue',
+  'useOptimistic',
+  'useActionState',
+  'useFormStatus',
+]);
 
 function isUseName(name: string): boolean {
   return name.startsWith('use') && name.length > 3;
+}
+
+function isBuiltInOrCustomHookName(name: string): boolean {
+  return HOOK_NAMES.has(name) || isUseName(name);
 }
 
 function isHookCall(node: Rule.Node | null | undefined): boolean {
@@ -11,7 +31,7 @@ function isHookCall(node: Rule.Node | null | undefined): boolean {
   const call = node as unknown as { callee: Rule.Node };
   const callee = call.callee;
   if (callee.type === 'Identifier') {
-    return HOOK_NAMES.has((callee as unknown as { name: string }).name);
+    return isBuiltInOrCustomHookName((callee as unknown as { name: string }).name);
   }
   if (callee.type === 'MemberExpression') {
     const mem = callee as unknown as {
@@ -20,7 +40,7 @@ function isHookCall(node: Rule.Node | null | undefined): boolean {
     return (
       mem.property.type === 'Identifier' &&
       mem.property.name != null &&
-      HOOK_NAMES.has(mem.property.name)
+      isBuiltInOrCustomHookName(mem.property.name)
     );
   }
   return false;

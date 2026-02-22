@@ -119,12 +119,7 @@ const rule: Rule.RuleModule = {
       if (!name) return;
       const typeAnn = prop.typeAnnotation?.typeAnnotation;
       if (!typeAnn) return;
-      if (
-        !isComponentTypeProp(
-          typeAnn,
-          (aliasName) => localTypeAliases.get(aliasName) ?? null,
-        )
-      ) {
+      if (!isComponentTypeProp(typeAnn, (aliasName) => localTypeAliases.get(aliasName) ?? null)) {
         return;
       }
       context.report({
@@ -141,12 +136,15 @@ const rule: Rule.RuleModule = {
       }
     }
 
+    const pendingChecks: Array<() => void> = [];
+
     return {
       TSInterfaceDeclaration(node: Rule.Node) {
         const decl = node as unknown as TSInterfaceDeclarationNode;
         if (!isComponentPropsContractName(decl.id?.name)) return;
         if (decl.body?.type === 'TSInterfaceBody') {
-          visitProps(getPropsFromInterfaceBody(decl.body));
+          const props = getPropsFromInterfaceBody(decl.body);
+          pendingChecks.push(() => visitProps(props));
         }
       },
       TSTypeAliasDeclaration(node: Rule.Node) {
@@ -158,8 +156,12 @@ const rule: Rule.RuleModule = {
         if (!isComponentPropsContractName(typeAliasName)) return;
         const typeAnn = decl.typeAnnotation;
         if (typeAnn) {
-          visitProps(getPropsFromTypeLiteral(typeAnn));
+          const props = getPropsFromTypeLiteral(typeAnn);
+          pendingChecks.push(() => visitProps(props));
         }
+      },
+      'Program:exit'() {
+        for (const check of pendingChecks) check();
       },
     };
   },

@@ -45,6 +45,13 @@ describe('no-handler-return-type', () => {
 					onComplete: () => boolean;
 				}
 			`,
+      // Lowercase 3rd char: not a handler (e.g. "once", "only")
+      `
+				interface ComponentProps {
+					once: () => boolean;
+					only: () => string;
+				}
+			`,
     ],
     invalid: [
       {

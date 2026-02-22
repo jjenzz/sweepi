@@ -2,6 +2,9 @@ import { describe, it } from 'vitest';
 import { RuleTester } from 'eslint';
 import rule from '../../src/rules/no-element-props';
 import tsParser from '@typescript-eslint/parser';
+import { fileURLToPath } from 'node:url';
+
+const tsconfigRootDir = fileURLToPath(new URL('../../', import.meta.url));
 
 RuleTester.describe = describe;
 RuleTester.it = it;
@@ -14,9 +17,9 @@ const ruleTester = new RuleTester({
       sourceType: 'module',
       ecmaFeatures: { jsx: true },
       projectService: {
-        allowDefaultProject: ['estree.tsx'],
+        allowDefaultProject: ['estree.ts', 'estree.tsx'],
       },
-      tsconfigRootDir: process.cwd(),
+      tsconfigRootDir,
     },
   },
 });
@@ -36,6 +39,9 @@ describe('no-element-props', () => {
       "import type { ReactElement, ReactNode } from 'react'; interface Props { render?: ReactElement | (() => ReactNode); }",
       // Non-element props
       'interface Props { title: string; count: number; }',
+      // Non-Props contracts are ignored
+      "import type { ReactNode } from 'react'; interface DialogConfig { header: ReactNode; }",
+      "import type { ReactElement } from 'react'; type SlotMap = { footer: ReactElement; };",
     ],
     invalid: [
       // ReactNode: disallow non-children
@@ -96,6 +102,16 @@ describe('no-element-props', () => {
       },
       {
         code: "import type { ReactElement, ReactNode } from 'react'; type Slot = ReactElement; interface Props { header: Slot; render?: ReactElement | (() => ReactNode); }",
+        errors: [
+          {
+            messageId: 'noElementProps',
+            data: { prop: 'header' },
+          },
+        ],
+      },
+      // Forward-reference: alias declared after Props
+      {
+        code: "import type { ReactElement } from 'react'; interface Props { header: Slot; } type Slot = ReactElement;",
         errors: [
           {
             messageId: 'noElementProps',

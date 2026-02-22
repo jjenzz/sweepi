@@ -25,8 +25,18 @@ describe('no-useless-hook', () => {
       "import { useRef } from 'react'; function useRefValue() { const r = useRef(0); return r; }",
       "import { useContext } from 'react'; function useCtx() { return useContext(X); }",
       "import { useReducer } from 'react'; function useR() { const [s, d] = useReducer(f, 0); return s; }",
+      "import { useLayoutEffect } from 'react'; function useLayout() { useLayoutEffect(() => {}, []); }",
+      "import { useId } from 'react'; function useStableId() { return useId(); }",
+      "import { useTransition } from 'react'; function useNav() { const [p, s] = useTransition(); return p; }",
+      "import { useDeferredValue } from 'react'; function useDeferred(v: string) { return useDeferredValue(v); }",
+      "import { useSyncExternalStore } from 'react'; function useStore() { return useSyncExternalStore(s, g); }",
+      "import { useImperativeHandle } from 'react'; function useHandle(ref: any) { useImperativeHandle(ref, () => ({})); }",
       'function formatDate(d: Date) { return d.toISOString(); }',
       "const getUser = () => fetch('/user');",
+      // Calling a custom hook makes this a legitimate hook
+      'function useAuth() { return useUserContext(); }',
+      'const useTheme = () => useThemeContext();',
+      'function useData() { return React.useCustomHook(); }',
     ],
     invalid: [
       {

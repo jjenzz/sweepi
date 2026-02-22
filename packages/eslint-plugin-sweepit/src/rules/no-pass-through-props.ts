@@ -239,7 +239,9 @@ function checkComponent(
         prop: binding.propName,
         component: name,
         forwardedTo:
-          usage.forwardedTo.size > 0 ? Array.from(usage.forwardedTo).sort().join(', ') : 'child prop',
+          usage.forwardedTo.size > 0
+            ? Array.from(usage.forwardedTo).sort().join(', ')
+            : 'child prop',
       },
     });
   }

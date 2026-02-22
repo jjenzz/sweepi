@@ -61,6 +61,17 @@ describe('jsx-server-action-prop-suffix', () => {
 					action: () => void;
 				}
 			`,
+      // Non-Props contracts are ignored
+      `
+				interface ApiConfig {
+					onComplete: () => Promise<void>;
+				}
+			`,
+      `
+				type RpcOptions = {
+					onFetch: () => Promise<Response>;
+				};
+			`,
     ],
     invalid: [
       {

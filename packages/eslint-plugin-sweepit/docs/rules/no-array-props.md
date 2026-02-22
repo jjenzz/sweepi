@@ -13,11 +13,17 @@ Array props often hide component requirements behind bundled list structures.
 - **Target**: JSX attributes with expression values.
 - **Reported**:
   - Inline array literals (`{[ ... ]}`).
-  - Expressions whose TypeScript type resolves to an array/tuple (for example identifiers and function calls returning arrays).
+  - Expressions whose TypeScript type resolves to an array/tuple (for example identifiers and function calls returning arrays) **when type information is available**.
 - **Allowed**:
   - Primitive values.
   - Function values (for handlers/callbacks).
   - Non-array expressions.
+
+### Type Information
+
+This rule is AST-first and works without TypeScript project services.
+
+When type information is enabled, detection is more accurate for non-literal expressions (for example `items={items}` and `items={getItems()}`).
 
 ## Options
 

@@ -3,14 +3,15 @@ import type ts from 'typescript';
 
 interface JSXExpressionContainer {
   type: 'JSXExpressionContainer';
-  expression?: Rule.Node & { type?: string } | null;
+  expression?: (Rule.Node & { type?: string }) | null;
 }
 
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
     docs: {
-      description: 'Disallow array-valued JSX props',
+      description:
+        'Disallow array-valued JSX props (more accurate when TypeScript type information is available)',
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md',
     },
     messages: {
@@ -38,6 +39,7 @@ const rule: Rule.RuleModule = {
         }
       ).parserServices;
     const checker = parserServices?.program?.getTypeChecker();
+    const hasTypeInformation = Boolean(checker && parserServices?.esTreeNodeToTSNodeMap);
 
     function isDisallowedArrayType(type: ts.Type | undefined): boolean {
       if (!type || !checker) return false;
@@ -50,7 +52,7 @@ const rule: Rule.RuleModule = {
     }
 
     function expressionHasArrayType(expression: Rule.Node): boolean {
-      if (!checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
+      if (!hasTypeInformation || !checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
       const tsNode = parserServices.esTreeNodeToTSNodeMap.get(expression);
       if (!tsNode) return false;
       return isDisallowedArrayType(checker.getTypeAtLocation(tsNode));

@@ -51,6 +51,10 @@ function isPromiseType(typeNode: Rule.Node): boolean {
   return typeName === 'Promise';
 }
 
+function isComponentPropsContractName(name: string | undefined): boolean {
+  return name?.endsWith('Props') ?? false;
+}
+
 function getFunctionReturnTypes(typeNode: Rule.Node): Rule.Node[] {
   const n = typeNode as TSContainerTypeLike;
 
@@ -131,9 +135,38 @@ const rule: Rule.RuleModule = {
       reportIfNeeded(node, propName, returnType);
     }
 
+    function checkMembers(members: Rule.Node[]): void {
+      for (const member of members) {
+        const maybeMember = member as { type?: string };
+        if (maybeMember.type === 'TSPropertySignature') {
+          checkPropertySignature(member);
+          continue;
+        }
+        if (maybeMember.type === 'TSMethodSignature') {
+          checkMethodSignature(member);
+        }
+      }
+    }
+
     return {
-      TSPropertySignature: checkPropertySignature,
-      TSMethodSignature: checkMethodSignature,
+      TSInterfaceDeclaration(node: Rule.Node) {
+        const declaration = node as {
+          id?: { name?: string };
+          body?: { type?: string; body?: Rule.Node[] };
+        };
+        if (!isComponentPropsContractName(declaration.id?.name)) return;
+        if (declaration.body?.type !== 'TSInterfaceBody') return;
+        checkMembers(declaration.body.body ?? []);
+      },
+      TSTypeAliasDeclaration(node: Rule.Node) {
+        const declaration = node as {
+          id?: { name?: string };
+          typeAnnotation?: { type?: string; members?: Rule.Node[] };
+        };
+        if (!isComponentPropsContractName(declaration.id?.name)) return;
+        if (declaration.typeAnnotation?.type !== 'TSTypeLiteral') return;
+        checkMembers(declaration.typeAnnotation.members ?? []);
+      },
     };
   },
 };

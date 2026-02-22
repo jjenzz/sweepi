@@ -183,7 +183,7 @@ const rule: Rule.RuleModule = {
     type: 'suggestion',
     docs: {
       description:
-        'Disallow optional component props unless they are defaulted at the component boundary',
+        'Disallow optional component props unless they are defaulted at the component boundary (more accurate when TypeScript type information is available)',
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md',
     },
     messages: {
@@ -195,16 +195,14 @@ const rule: Rule.RuleModule = {
   create(context) {
     const parserServices = getParserServices(context);
     const checker = parserServices?.program?.getTypeChecker();
+    const hasTypeInformation = Boolean(checker && parserServices?.esTreeNodeToTSNodeMap);
     const optionalPropsByTypeName = new Map<string, Set<string>>();
 
     function storeTypeOptionalProps(typeName: string, members: Rule.Node[]): void {
       optionalPropsByTypeName.set(typeName, collectOptionalPropNamesFromMembers(members));
     }
 
-    function reportOptionalPropsWithoutDefaults(
-      componentName: string,
-      paramNode: Rule.Node,
-    ): void {
+    function reportOptionalPropsWithoutDefaults(componentName: string, paramNode: Rule.Node): void {
       const defaultedKeys = collectDefaultedParamKeys(paramNode);
       const paramTypeAnnotation = getParamTypeAnnotationNode(paramNode);
       const optionalPropNamesFromAst = getOptionalPropNamesFromTypeNode(
@@ -213,8 +211,8 @@ const rule: Rule.RuleModule = {
       );
       const optionalPropNamesFromChecker = getComponentOptionalPropNamesFromTypeChecker(
         paramNode,
-        checker,
-        parserServices,
+        hasTypeInformation ? checker : undefined,
+        hasTypeInformation ? parserServices : null,
       );
       const optionalPropNames = new Set<string>([
         ...optionalPropNamesFromAst,
@@ -246,7 +244,10 @@ const rule: Rule.RuleModule = {
         const declaration = node as unknown as TSTypeAliasDeclarationNode;
         const typeName = declaration.id?.name;
         if (!typeName) return;
-        const typeAnnotation = declaration.typeAnnotation as { type?: string; members?: Rule.Node[] };
+        const typeAnnotation = declaration.typeAnnotation as {
+          type?: string;
+          members?: Rule.Node[];
+        };
         if (typeAnnotation?.type !== 'TSTypeLiteral') return;
         storeTypeOptionalProps(typeName, typeAnnotation.members ?? []);
       },

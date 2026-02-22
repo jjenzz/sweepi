@@ -61,7 +61,9 @@ function getKeyName(node: IdentifierLike | LiteralLike): string | null {
 }
 
 function isHandlerProp(name: string): boolean {
-  return name.startsWith('on') && name.length > 2;
+  if (!name.startsWith('on') || name.length <= 2) return false;
+  const third = name[2];
+  return third >= 'A' && third <= 'Z';
 }
 
 function getReturnTypeAnnotation(node: TSFunctionTypeLike): Rule.Node | null {

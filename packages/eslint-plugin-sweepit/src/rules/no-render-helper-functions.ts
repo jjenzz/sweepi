@@ -30,16 +30,62 @@ function expressionReturnsJSX(node: Rule.Node | null | undefined): boolean {
   return false;
 }
 
+const STATEMENT_CHILD_KEYS: Record<string, string[]> = {
+  BlockStatement: ['body'],
+  IfStatement: ['test', 'consequent', 'alternate'],
+  ForStatement: ['init', 'test', 'update', 'body'],
+  ForInStatement: ['left', 'right', 'body'],
+  ForOfStatement: ['left', 'right', 'body'],
+  WhileStatement: ['test', 'body'],
+  DoWhileStatement: ['body', 'test'],
+  SwitchStatement: ['discriminant', 'cases'],
+  SwitchCase: ['test', 'consequent'],
+  TryStatement: ['block', 'handler', 'finalizer'],
+  CatchClause: ['param', 'body'],
+  ReturnStatement: ['argument'],
+  ExpressionStatement: ['expression'],
+  VariableDeclaration: ['declarations'],
+};
+
+function* traverseStatements(node: Rule.Node | null | undefined): Generator<Rule.Node> {
+  if (!node || typeof node !== 'object') return;
+  const stack: Rule.Node[] = [node];
+  const seen = new WeakSet<object>();
+  while (stack.length > 0) {
+    const current = stack.pop()!;
+    if (seen.has(current as object)) continue;
+    seen.add(current as object);
+    yield current;
+    const keys = STATEMENT_CHILD_KEYS[(current as { type?: string }).type ?? ''] ?? [];
+    const n = current as unknown as Record<string, unknown>;
+    for (const key of keys) {
+      const val = n[key];
+      if (val && typeof val === 'object') {
+        if (Array.isArray(val)) {
+          for (let i = val.length - 1; i >= 0; i--) {
+            const child = val[i];
+            if (child && typeof child === 'object' && 'type' in child) {
+              stack.push(child as Rule.Node);
+            }
+          }
+        } else if ('type' in (val as object)) {
+          stack.push(val as Rule.Node);
+        }
+      }
+    }
+  }
+}
+
 /** Heuristic: does the function body return JSX? */
 function functionReturnsJSX(body: Rule.Node | null | undefined): boolean {
   if (!body) return false;
-  const b = body as { type?: string; body?: Rule.Node[] };
+  const b = body as { type?: string };
   if (b.type === 'JSXElement' || b.type === 'JSXFragment') {
     return true;
   }
   if (b.type === 'BlockStatement') {
-    for (const stmt of b.body ?? []) {
-      const s = stmt as { type?: string; argument?: Rule.Node };
+    for (const child of traverseStatements(body)) {
+      const s = child as { type?: string; argument?: Rule.Node };
       if (s.type === 'ReturnStatement' && s.argument) {
         if (expressionReturnsJSX(s.argument)) return true;
       }

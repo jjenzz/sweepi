@@ -17,6 +17,22 @@ function normalizeForComparison(value: string): string {
   return value.toLowerCase().replace(/[^a-z0-9]/g, '');
 }
 
+function buildExampleName(block: string, localName: string): string {
+  if (localName.startsWith(block)) return localName;
+
+  let overlapLength = 0;
+  for (let index = 1; index < block.length; index += 1) {
+    const suffix = block.slice(index);
+    if (localName.startsWith(suffix)) {
+      overlapLength = suffix.length;
+      break;
+    }
+  }
+
+  if (overlapLength === 0) return `${block}${localName}`;
+  return `${block}${localName.slice(overlapLength)}`;
+}
+
 function getFileStem(filename: string): string | null {
   if (!filename || filename === '<input>') return null;
   const base = path.basename(filename);
@@ -150,7 +166,7 @@ const rule: Rule.RuleModule = {
       'Program:exit'() {
         if (exportedComponents.length < 2) return;
 
-        const stem = getFileStem(context.getFilename());
+        const stem = getFileStem(context.filename);
         if (!stem) return;
         if (stem.toLowerCase() === 'index') return;
 
@@ -177,13 +193,13 @@ const rule: Rule.RuleModule = {
             data: {
               name: exported.localName,
               block: preferredBlock,
-              example: `${preferredBlock}${exported.localName}`,
+              example: buildExampleName(preferredBlock, exported.localName),
             },
           });
         }
       },
     };
-  }
+  },
 };
 
 export default rule;

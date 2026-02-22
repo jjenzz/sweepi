@@ -16,6 +16,27 @@ import sweepit from 'eslint-plugin-sweepit';
 export default [...sweepit.configs.react];
 ```
 
+## Type Information (Accuracy Boost)
+
+Most rules are AST-first and work without TypeScript project services.
+
+Some rules become more accurate when ESLint has type information available (for example, they can detect typed identifiers/calls beyond inline literals):
+
+- `sweepit/no-array-props`
+- `sweepit/no-object-props`
+- `sweepit/no-optional-props-without-defaults`
+
+To enable type-aware linting in your app config:
+
+```js
+languageOptions: {
+  parserOptions: {
+    projectService: true,
+    tsconfigRootDir: process.cwd(),
+  },
+}
+```
+
 ## What `configs.react` includes
 
 The exported React config is opinionated. It enables:
@@ -73,10 +94,10 @@ export default [
 | [`sweepit/no-render-helper-functions`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-render-helper-functions.md) | Disallows JSX-returning functions unless they use PascalCase component naming. |
 | [`sweepit/no-element-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-element-props.md) | Restricts `ReactNode`/`ReactElement` prop usage to explicit composition conventions (`children`/`render`). |
 | [`sweepit/no-componenttype-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-componenttype-props.md) | Disallows `ComponentType`/`FC`/`FunctionComponent` props in component contracts. |
-| [`sweepit/no-object-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md) | Disallows object-valued JSX props (including typed identifiers/calls), encouraging explicit primitive contracts and composition. |
-| [`sweepit/no-array-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md) | Disallows array-valued JSX props (including typed identifiers/calls), encouraging explicit primitive contracts and composition. |
+| [`sweepit/no-object-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md) | Disallows object-valued JSX props; with type info enabled it also catches typed identifiers/calls. |
+| [`sweepit/no-array-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md) | Disallows array-valued JSX props; with type info enabled it also catches typed identifiers/calls. |
 | [`sweepit/no-prefixed-prop-bundles`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prefixed-prop-bundles.md) | Treats grouped prefixed prop declarations (for example `userName/userEmail/userRole`) as a composition-pressure signal once they hit a configured threshold (default `3`). |
-| [`sweepit/no-optional-props-without-defaults`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md) | Disallows optional component props unless they are defaulted at the component boundary. |
+| [`sweepit/no-optional-props-without-defaults`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md) | Disallows optional component props unless defaulted at the component boundary; type info improves optional-prop detection accuracy. |
 | [`sweepit/no-boolean-capability-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-boolean-capability-props.md) | Disallows boolean props without associated control handlers (for example `open` without `onOpenChange`) in component contracts. |
 | [`sweepit/max-custom-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/max-custom-props.md) | Limits custom prop count in `*Props` contracts (default max `8`) to surface composition pressure early. |
 | [`sweepit/jsx-bem-compound-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-bem-compound-naming.md) | Enforces block-prefixed naming for exported compound component parts. |

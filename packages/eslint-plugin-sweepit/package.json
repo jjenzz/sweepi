@@ -31,7 +31,8 @@
 		"eslint-plugin-react-you-might-not-need-an-effect": "^0.3.2"
 	},
 	"peerDependencies": {
-		"eslint": "^9.0.0"
+		"eslint": "^9.0.0",
+		"typescript": ">=5.0.0"
 	},
 	"devDependencies": {
 		"@types/node": "^24.3.0",

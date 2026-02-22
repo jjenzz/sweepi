@@ -15,12 +15,18 @@ Object props often couple components to data models and business-layer shapes.
 - **Target**: JSX attributes with expression values.
 - **Reported**:
   - Inline object literals (`{{ ... }}`).
-  - Expressions whose TypeScript type resolves to an object (for example identifiers, member access, and function calls returning objects).
+  - Expressions whose TypeScript type resolves to an object (for example identifiers, member access, and function calls returning objects) **when type information is available**.
 - **Allowed**:
   - Primitive values.
   - `style` object values (`style={{ ... }}` or `style={styleObject}`).
   - Function values (for event handlers, callbacks, etc.).
   - Non-object expressions.
+
+### Type Information
+
+This rule is AST-first and works without TypeScript project services.
+
+When type information is enabled, detection is more accurate for non-literal expressions (for example `user={user}` and `config={getConfig()}`).
 
 ## Options
 

@@ -55,7 +55,7 @@ export { ButtonGroup, ButtonGroupItem, ButtonGroupIcon };
 ## How To Fix
 
 1. Ensure one exported component matches the file stem (for example `button-group.tsx` -> `ButtonGroup`).
-2. Prefix other exported components with that block (`ButtonGroupItem`, `ButtonGroupIcon`, and so on).
+2. Prefix other exported components with that block (`ButtonGroupItem`, `ButtonGroupItemIcon`, and so on).
 3. Keep unrelated grouped exports in files whose stem does not imply a single compound block.
 
 ```tsx
@@ -65,6 +65,6 @@ export { ButtonGroup, Item, GroupItemIcon };
 
 // after
 // button-group.tsx
-export { ButtonGroup, ButtonGroupItem, ButtonGroupIcon };
+export { ButtonGroup, ButtonGroupItem, ButtonGroupItemIcon };
 ```
 

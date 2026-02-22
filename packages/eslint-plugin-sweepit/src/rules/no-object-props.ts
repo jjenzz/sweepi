@@ -3,14 +3,15 @@ import ts from 'typescript';
 
 interface JSXExpressionContainer {
   type: 'JSXExpressionContainer';
-  expression?: Rule.Node & { type?: string } | null;
+  expression?: (Rule.Node & { type?: string }) | null;
 }
 
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
     docs: {
-      description: 'Disallow object-valued JSX props',
+      description:
+        'Disallow object-valued JSX props (more accurate when TypeScript type information is available)',
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md',
     },
     messages: {
@@ -38,6 +39,7 @@ const rule: Rule.RuleModule = {
         }
       ).parserServices;
     const checker = parserServices?.program?.getTypeChecker();
+    const hasTypeInformation = Boolean(checker && parserServices?.esTreeNodeToTSNodeMap);
 
     function isDisallowedObjectType(type: ts.Type | undefined): boolean {
       if (!type || !checker) return false;
@@ -47,20 +49,17 @@ const rule: Rule.RuleModule = {
       }
 
       if (checker.isArrayType(type) || checker.isTupleType(type)) return false;
-      if (checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0)
-        return false;
-      if (checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length > 0)
-        return false;
+      if (checker.getSignaturesOfType(type, ts.SignatureKind.Call).length > 0) return false;
+      if (checker.getSignaturesOfType(type, ts.SignatureKind.Construct).length > 0) return false;
 
       const isObjectLike =
-        (type.flags & ts.TypeFlags.Object) !== 0 ||
-        (type.flags & ts.TypeFlags.NonPrimitive) !== 0;
+        (type.flags & ts.TypeFlags.Object) !== 0 || (type.flags & ts.TypeFlags.NonPrimitive) !== 0;
 
       return isObjectLike;
     }
 
     function expressionHasObjectType(expression: Rule.Node): boolean {
-      if (!checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
+      if (!hasTypeInformation || !checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
       const tsNode = parserServices.esTreeNodeToTSNodeMap.get(expression);
       if (!tsNode) return false;
       return isDisallowedObjectType(checker.getTypeAtLocation(tsNode));
