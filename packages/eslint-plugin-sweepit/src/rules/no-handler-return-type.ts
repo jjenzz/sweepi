@@ -26,6 +26,34 @@ interface TSContainerTypeLike {
   types?: Rule.Node[];
 }
 
+interface TSPropertySignatureLike {
+  type?: string;
+  key?: IdentifierLike | LiteralLike;
+  typeAnnotation?: TSReturnTypeLike;
+}
+
+interface TSMethodSignatureLike {
+  type?: string;
+  key?: IdentifierLike | LiteralLike;
+  returnType?: TSReturnTypeLike;
+}
+
+interface TSInterfaceDeclarationLike {
+  id?: IdentifierLike;
+  body?: {
+    type?: string;
+    body?: Rule.Node[];
+  };
+}
+
+interface TSTypeAliasDeclarationLike {
+  id?: IdentifierLike;
+  typeAnnotation?: {
+    type?: string;
+    members?: Rule.Node[];
+  };
+}
+
 function getKeyName(node: IdentifierLike | LiteralLike): string | null {
   if (node.type === 'Identifier') return node.name;
   if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
@@ -94,6 +122,10 @@ function reportInvalidReturnType(
   });
 }
 
+function isComponentPropsContractName(name: string | undefined): boolean {
+  return name?.endsWith('Props') ?? false;
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
@@ -110,10 +142,7 @@ const rule: Rule.RuleModule = {
   },
   create(context) {
     function checkPropertySignature(node: Rule.Node): void {
-      const property = node as {
-        key?: IdentifierLike | LiteralLike;
-        typeAnnotation?: TSReturnTypeLike;
-      };
+      const property = node as TSPropertySignatureLike;
       if (!property.key || !property.typeAnnotation?.typeAnnotation) return;
 
       const propName = getKeyName(property.key);
@@ -126,10 +155,7 @@ const rule: Rule.RuleModule = {
     }
 
     function checkMethodSignature(node: Rule.Node): void {
-      const method = node as {
-        key?: IdentifierLike | LiteralLike;
-        returnType?: TSReturnTypeLike;
-      };
+      const method = node as TSMethodSignatureLike;
       if (!method.key || !method.returnType?.typeAnnotation) return;
 
       const propName = getKeyName(method.key);
@@ -139,9 +165,32 @@ const rule: Rule.RuleModule = {
       reportInvalidReturnType(context, node, propName, method.returnType.typeAnnotation);
     }
 
+    function checkMembers(members: Rule.Node[]): void {
+      for (const member of members) {
+        const maybeMember = member as { type?: string };
+        if (maybeMember.type === 'TSPropertySignature') {
+          checkPropertySignature(member);
+          continue;
+        }
+        if (maybeMember.type === 'TSMethodSignature') {
+          checkMethodSignature(member);
+        }
+      }
+    }
+
     return {
-      TSPropertySignature: checkPropertySignature,
-      TSMethodSignature: checkMethodSignature,
+      TSInterfaceDeclaration(node: Rule.Node) {
+        const declaration = node as TSInterfaceDeclarationLike;
+        if (!isComponentPropsContractName(declaration.id?.name)) return;
+        if (declaration.body?.type !== 'TSInterfaceBody') return;
+        checkMembers(declaration.body.body ?? []);
+      },
+      TSTypeAliasDeclaration(node: Rule.Node) {
+        const declaration = node as TSTypeAliasDeclarationLike;
+        if (!isComponentPropsContractName(declaration.id?.name)) return;
+        if (declaration.typeAnnotation?.type !== 'TSTypeLiteral') return;
+        checkMembers(declaration.typeAnnotation.members ?? []);
+      },
     };
   },
 };

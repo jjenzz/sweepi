@@ -9,7 +9,7 @@ Favoring composition (`children`, `asChild`, render props) keeps APIs flatter an
 
 ## Rule Details
 
-- **Target**: `TSInterfaceDeclaration` and `TSTypeAliasDeclaration` with object-like type bodies.
+- **Target**: `*Props` contracts only (`TSInterfaceDeclaration` and `TSTypeAliasDeclaration` with object-like type bodies).
 - **Forbidden**: Props typed as `ComponentType<T>`, `React.ComponentType<T>`, `FC<T>`, or `FunctionComponent<T>` (including aliases/wrappers that resolve to those types).
 - **Recommendation**: Use `asChild` (Radix-style) or a render prop for polymorphism instead.
 

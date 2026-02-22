@@ -14,7 +14,7 @@ When handler props return values, child-to-parent control flow becomes implicit 
 
 ## Rule Details
 
-- **Target**: TypeScript prop definitions with names starting with `on` (for example `onClose`, `onSubmit`).
+- **Target**: `*Props` contracts only. Within those contracts, checks definitions with names starting with `on` (for example `onClose`, `onSubmit`).
 - **Reported**: Function-type prop contracts that return anything other than `void` (including `Promise<void>`).
 - **Allowed**:
   - `on*` props returning `void`.

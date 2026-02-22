@@ -1,4 +1,4 @@
-# Disallow prefixed prop bundles in JSX (`no-prefixed-prop-bundles`)
+# Disallow prefixed prop bundles in prop contracts (`no-prefixed-prop-bundles`)
 
 Repeated domain-style prop prefixes (for example `userName`, `userEmail`, `userRole`) often signal over-grouped component contracts.
 
@@ -12,8 +12,8 @@ Repeated domain-style prop prefixes (for example `userName`, `userEmail`, `userR
 
 ## Rule Details
 
-- **Target**: JSX opening elements.
-- **Reported**: Sets of props that share the same prefix and meet the configured threshold.
+- **Target**: TypeScript component prop contracts named `*Props` (`interface` and object `type` declarations).
+- **Reported**: Sets of prop fields that share the same prefix and meet the configured threshold.
   - Example prefix extraction: `userName`, `userEmail`, `userRole` -> `user*`.
 - **Ignored prefixes**: `on*`, `aria*`, `data*`, `is*`, `has*`, `can*`, `should*`.
 
@@ -32,7 +32,11 @@ Repeated domain-style prop prefixes (for example `userName`, `userEmail`, `userR
 ### Incorrect
 
 ```tsx
-<Card userName={user.name} userEmail={user.email} userRole={user.role} />
+interface CardProps {
+  userName: string;
+  userEmail: string;
+  userRole: string;
+}
 ```
 
 ### Correct

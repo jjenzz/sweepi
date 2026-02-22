@@ -44,6 +44,9 @@ describe('plugin:sweepit/react', () => {
     expect(reactConfig.rules?.['sweepit/no-object-props']).toBe('error');
     expect(reactConfig.rules?.['sweepit/no-array-props']).toBe('error');
     expect(reactConfig.rules?.['sweepit/no-prefixed-prop-bundles']).toBe('error');
+    expect(reactConfig.rules?.['sweepit/no-optional-props-without-defaults']).toBe('error');
+    expect(reactConfig.rules?.['sweepit/no-boolean-capability-props']).toBe('error');
+    expect(reactConfig.rules?.['sweepit/max-custom-props']).toBe('error');
     expect(reactConfig.rules?.['sweepit/jsx-bem-compound-naming']).toBe('error');
     expect(reactConfig.rules?.['sweepit/jsx-compound-part-export-naming']).toBe('error');
     expect(reactConfig.rules?.['sweepit/no-pass-through-props']).toBe('error');

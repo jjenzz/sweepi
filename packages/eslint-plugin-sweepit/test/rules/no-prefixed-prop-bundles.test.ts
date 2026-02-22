@@ -20,19 +20,58 @@ const ruleTester = new RuleTester({
 describe('no-prefixed-prop-bundles', () => {
   ruleTester.run('no-prefixed-prop-bundles', rule, {
     valid: [
-      '<UserRow name={user.name} email={user.email} />',
-      '<UserRow userName={user.name} userEmail={user.email} />',
-      '<Dialog onOpen={handleOpen} onClose={handleClose} onChange={handleChange} />',
-      '<Comp dataState={state} dataKind={kind} dataMode={mode} />',
-      '<Comp isOpen={open} isLoading={loading} isDisabled={disabled} />',
+      `
+        interface UserCardProps {
+          name: string;
+          email: string;
+        }
+      `,
+      `
+        type UserCardProps = {
+          userName: string;
+          userEmail: string;
+        };
+      `,
+      `
+        interface DialogProps {
+          onOpen: () => void;
+          onClose: () => void;
+          onChange: () => void;
+        }
+      `,
+      `
+        type DataProps = {
+          dataState: string;
+          dataMode: string;
+          dataKind: string;
+        };
+      `,
+      `
+        interface QueryShape {
+          userName: string;
+          userEmail: string;
+          userAvatarUrl: string;
+        }
+      `,
       {
-        code: '<UserRow userName={user.name} userEmail={user.email} />',
+        code: `
+          interface UserCardProps {
+            userName: string;
+            userEmail: string;
+          }
+        `,
         options: [{ threshold: 4 }],
       },
     ],
     invalid: [
       {
-        code: '<UserRow userName={user.name} userEmail={user.email} userAvatarUrl={user.avatarUrl} />',
+        code: `
+          interface UserCardProps {
+            userName: string;
+            userEmail: string;
+            userAvatarUrl: string;
+          }
+        `,
         errors: [
           {
             messageId: 'noPrefixedPropBundle',
@@ -49,7 +88,13 @@ describe('no-prefixed-prop-bundles', () => {
         ],
       },
       {
-        code: '<Card orderId={order.id} orderStatus={order.status} orderTotal={order.total} />',
+        code: `
+          type CardProps = {
+            orderId: string;
+            orderStatus: string;
+            orderTotal: number;
+          };
+        `,
         errors: [
           {
             messageId: 'noPrefixedPropBundle',
@@ -66,7 +111,12 @@ describe('no-prefixed-prop-bundles', () => {
         ],
       },
       {
-        code: '<UserRow userName={user.name} userEmail={user.email} />',
+        code: `
+          interface UserCardProps {
+            userName: string;
+            userEmail: string;
+          }
+        `,
         options: [{ threshold: 2 }],
         errors: [
           {
@@ -80,7 +130,13 @@ describe('no-prefixed-prop-bundles', () => {
         ],
       },
       {
-        code: '<Card className={rootClass} classHeader={headerClass} classBody={bodyClass} />',
+        code: `
+          type CardProps = {
+            className: string;
+            classHeader: string;
+            classBody: string;
+          };
+        `,
         errors: [
           {
             messageId: 'noPrefixedPropBundle',

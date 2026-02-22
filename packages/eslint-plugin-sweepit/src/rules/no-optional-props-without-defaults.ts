@@ -1,0 +1,279 @@
+import type { Rule } from 'eslint';
+import ts from 'typescript';
+
+interface IdentifierLike {
+  type: 'Identifier';
+  name: string;
+}
+
+interface LiteralLike {
+  type: 'Literal';
+  value: string | number | boolean | null;
+}
+
+interface TSTypeAnnotationNode {
+  typeAnnotation?: Rule.Node;
+}
+
+interface TSPropertySignatureNode {
+  type: 'TSPropertySignature';
+  key: IdentifierLike | LiteralLike;
+  optional?: boolean;
+}
+
+interface TSInterfaceDeclarationNode {
+  id?: IdentifierLike;
+  body?: {
+    type?: string;
+    body?: Rule.Node[];
+  };
+}
+
+interface TSTypeAliasDeclarationNode {
+  id?: IdentifierLike;
+  typeAnnotation?: Rule.Node;
+}
+
+interface PropertyNode {
+  type: 'Property';
+  key: IdentifierLike | LiteralLike;
+  value?: Rule.Node;
+}
+
+interface AssignmentPatternNode {
+  type: 'AssignmentPattern';
+  left: Rule.Node;
+  right: Rule.Node;
+}
+
+function getParserServices(context: Rule.RuleContext): {
+  program?: ts.Program;
+  esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
+} | null {
+  return (
+    (
+      context.sourceCode as {
+        parserServices?: {
+          program?: ts.Program;
+          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
+        };
+      }
+    ).parserServices ??
+    (
+      context as Rule.RuleContext & {
+        parserServices?: {
+          program?: ts.Program;
+          esTreeNodeToTSNodeMap?: Map<unknown, ts.Node>;
+        };
+      }
+    ).parserServices ??
+    null
+  );
+}
+
+function isPascalCaseName(name: string): boolean {
+  const first = name[0];
+  return Boolean(first && first >= 'A' && first <= 'Z');
+}
+
+function getPropertyName(node: IdentifierLike | LiteralLike): string | null {
+  if (node.type === 'Identifier') return node.name;
+  if (node.type === 'Literal' && typeof node.value === 'string') return node.value;
+  return null;
+}
+
+function getTypeReferenceName(typeNode: Rule.Node): string | null {
+  const maybeRef = typeNode as {
+    type?: string;
+    typeName?: { type?: string; name?: string; right?: { name?: string } };
+  };
+  if (maybeRef.type !== 'TSTypeReference' || !maybeRef.typeName) return null;
+  if (maybeRef.typeName.type === 'Identifier' && maybeRef.typeName.name) {
+    return maybeRef.typeName.name;
+  }
+  if (maybeRef.typeName.type === 'TSQualifiedName' && maybeRef.typeName.right?.name) {
+    return maybeRef.typeName.right.name;
+  }
+  return null;
+}
+
+function collectOptionalPropNamesFromMembers(members: Rule.Node[]): Set<string> {
+  const optionalPropNames = new Set<string>();
+  for (const member of members) {
+    const maybeProperty = member as TSPropertySignatureNode;
+    if (maybeProperty.type !== 'TSPropertySignature' || !maybeProperty.optional) continue;
+    const propName = getPropertyName(maybeProperty.key);
+    if (!propName) continue;
+    optionalPropNames.add(propName);
+  }
+  return optionalPropNames;
+}
+
+function getOptionalPropNamesFromTypeNode(
+  typeNode: Rule.Node | undefined,
+  optionalPropMap: Map<string, Set<string>>,
+): Set<string> {
+  if (!typeNode) return new Set<string>();
+
+  const maybeTypeLiteral = typeNode as { type?: string; members?: Rule.Node[] };
+  if (maybeTypeLiteral.type === 'TSTypeLiteral') {
+    return collectOptionalPropNamesFromMembers(maybeTypeLiteral.members ?? []);
+  }
+
+  const typeRefName = getTypeReferenceName(typeNode);
+  if (typeRefName) {
+    return new Set<string>(optionalPropMap.get(typeRefName) ?? []);
+  }
+
+  return new Set<string>();
+}
+
+function collectDefaultedParamKeys(paramNode: Rule.Node): Set<string> {
+  const defaultedKeys = new Set<string>();
+  const maybeObjectPattern = paramNode as { type?: string; properties?: Rule.Node[] };
+  if (maybeObjectPattern.type !== 'ObjectPattern') return defaultedKeys;
+
+  for (const propertyNode of maybeObjectPattern.properties ?? []) {
+    const maybeProperty = propertyNode as PropertyNode;
+    if (maybeProperty.type !== 'Property') continue;
+    const propName = getPropertyName(maybeProperty.key);
+    if (!propName) continue;
+    const maybeValue = maybeProperty.value as AssignmentPatternNode | undefined;
+    if (!maybeValue || maybeValue.type !== 'AssignmentPattern') continue;
+    defaultedKeys.add(propName);
+  }
+
+  return defaultedKeys;
+}
+
+function getParamTypeAnnotationNode(paramNode: Rule.Node): Rule.Node | null {
+  const maybeAnnotatedParam = paramNode as { typeAnnotation?: TSTypeAnnotationNode };
+  if (maybeAnnotatedParam.typeAnnotation?.typeAnnotation) {
+    return maybeAnnotatedParam.typeAnnotation.typeAnnotation;
+  }
+
+  const maybeAssignment = paramNode as AssignmentPatternNode;
+  if (maybeAssignment.type !== 'AssignmentPattern') return null;
+  const maybeAssignmentLeft = maybeAssignment.left as { typeAnnotation?: TSTypeAnnotationNode };
+  return maybeAssignmentLeft.typeAnnotation?.typeAnnotation ?? null;
+}
+
+function getComponentOptionalPropNamesFromTypeChecker(
+  paramNode: Rule.Node,
+  checker: ts.TypeChecker | undefined,
+  parserServices: { esTreeNodeToTSNodeMap?: Map<unknown, ts.Node> } | null,
+): Set<string> {
+  if (!checker || !parserServices?.esTreeNodeToTSNodeMap) return new Set<string>();
+  const tsNode = parserServices.esTreeNodeToTSNodeMap.get(paramNode);
+  if (!tsNode) return new Set<string>();
+
+  const paramType = checker.getTypeAtLocation(tsNode);
+  const optionalPropNames = new Set<string>();
+  for (const symbol of checker.getPropertiesOfType(paramType)) {
+    if ((symbol.flags & ts.SymbolFlags.Optional) === 0) continue;
+    const propName = symbol.getName();
+    if (!propName || propName.startsWith('__@')) continue;
+    optionalPropNames.add(propName);
+  }
+  return optionalPropNames;
+}
+
+const rule: Rule.RuleModule = {
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description:
+        'Disallow optional component props unless they are defaulted at the component boundary',
+      url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md',
+    },
+    messages: {
+      noOptionalPropWithoutDefault:
+        "Component '{{component}}' prop '{{prop}}' is optional without a default at the component boundary. Default configurable props, and keep time-based readiness checks outside component prop contracts. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md.",
+    },
+    schema: [],
+  },
+  create(context) {
+    const parserServices = getParserServices(context);
+    const checker = parserServices?.program?.getTypeChecker();
+    const optionalPropsByTypeName = new Map<string, Set<string>>();
+
+    function storeTypeOptionalProps(typeName: string, members: Rule.Node[]): void {
+      optionalPropsByTypeName.set(typeName, collectOptionalPropNamesFromMembers(members));
+    }
+
+    function reportOptionalPropsWithoutDefaults(
+      componentName: string,
+      paramNode: Rule.Node,
+    ): void {
+      const defaultedKeys = collectDefaultedParamKeys(paramNode);
+      const paramTypeAnnotation = getParamTypeAnnotationNode(paramNode);
+      const optionalPropNamesFromAst = getOptionalPropNamesFromTypeNode(
+        paramTypeAnnotation ?? undefined,
+        optionalPropsByTypeName,
+      );
+      const optionalPropNamesFromChecker = getComponentOptionalPropNamesFromTypeChecker(
+        paramNode,
+        checker,
+        parserServices,
+      );
+      const optionalPropNames = new Set<string>([
+        ...optionalPropNamesFromAst,
+        ...optionalPropNamesFromChecker,
+      ]);
+
+      for (const propName of optionalPropNames) {
+        if (defaultedKeys.has(propName)) continue;
+        context.report({
+          node: paramNode,
+          messageId: 'noOptionalPropWithoutDefault',
+          data: {
+            component: componentName,
+            prop: propName,
+          },
+        });
+      }
+    }
+
+    return {
+      TSInterfaceDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as TSInterfaceDeclarationNode;
+        const typeName = declaration.id?.name;
+        if (!typeName) return;
+        if (declaration.body?.type !== 'TSInterfaceBody') return;
+        storeTypeOptionalProps(typeName, declaration.body.body ?? []);
+      },
+      TSTypeAliasDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as TSTypeAliasDeclarationNode;
+        const typeName = declaration.id?.name;
+        if (!typeName) return;
+        const typeAnnotation = declaration.typeAnnotation as { type?: string; members?: Rule.Node[] };
+        if (typeAnnotation?.type !== 'TSTypeLiteral') return;
+        storeTypeOptionalProps(typeName, typeAnnotation.members ?? []);
+      },
+      FunctionDeclaration(node: Rule.Node) {
+        const declaration = node as unknown as { id?: IdentifierLike; params?: Rule.Node[] };
+        const componentName = declaration.id?.name;
+        if (!componentName || !isPascalCaseName(componentName)) return;
+        const firstParam = declaration.params?.[0];
+        if (!firstParam) return;
+        reportOptionalPropsWithoutDefaults(componentName, firstParam);
+      },
+      VariableDeclarator(node: Rule.Node) {
+        const declaration = node as unknown as {
+          id?: IdentifierLike;
+          init?: { type?: string; params?: Rule.Node[] };
+        };
+        const componentName = declaration.id?.name;
+        if (!componentName || !isPascalCaseName(componentName)) return;
+        const init = declaration.init;
+        if (!init) return;
+        if (init.type !== 'ArrowFunctionExpression' && init.type !== 'FunctionExpression') return;
+        const firstParam = init.params?.[0];
+        if (!firstParam) return;
+        reportOptionalPropsWithoutDefaults(componentName, firstParam);
+      },
+    };
+  },
+};
+
+export default rule;

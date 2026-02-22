@@ -14,6 +14,7 @@ interface TSInterfaceBodyNode {
 
 interface TSInterfaceDeclarationNode {
   type: string;
+  id?: { type: string; name?: string };
   body: TSInterfaceBodyNode;
 }
 
@@ -161,6 +162,10 @@ function getPropsFromTypeLiteral(typeNode: unknown): TSPropertySignatureNode[] {
   return [];
 }
 
+function isComponentPropsContractName(name: string | undefined): boolean {
+  return name?.endsWith('Props') ?? false;
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
@@ -219,6 +224,7 @@ const rule: Rule.RuleModule = {
     return {
       TSInterfaceDeclaration(node: Rule.Node) {
         const decl = node as unknown as TSInterfaceDeclarationNode;
+        if (!isComponentPropsContractName(decl.id?.name)) return;
         if (decl.body?.type === 'TSInterfaceBody') {
           visitProps(getPropsFromInterfaceBody(decl.body));
         }
@@ -229,6 +235,7 @@ const rule: Rule.RuleModule = {
         if (typeAliasName) {
           localTypeAliases.set(typeAliasName, decl.typeAnnotation);
         }
+        if (!isComponentPropsContractName(typeAliasName)) return;
         const typeAnn = decl.typeAnnotation;
         if (typeAnn) {
           visitProps(getPropsFromTypeLiteral(typeAnn));

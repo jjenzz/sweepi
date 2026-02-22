@@ -40,6 +40,11 @@ describe('no-handler-return-type', () => {
 					close: () => boolean;
 				}
 			`,
+      `
+				interface MutationConfig {
+					onComplete: () => boolean;
+				}
+			`,
     ],
     invalid: [
       {
