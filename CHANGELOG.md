@@ -1,3 +1,15 @@
+# v0.0.2 (Sun Feb 22 2026)
+
+#### 🐛 Bug Fix
+
+- no-array-props: fallback to `typeToString` checks for CI [#2](https://github.com/jjenzz/sweepit/pull/2) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.1 (Sun Feb 22 2026)
 
 #### 🐛 Bug Fix
