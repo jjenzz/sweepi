@@ -102,4 +102,3 @@ function Header() {
   return <header>{data.title}</header>;
 }
 ```
-

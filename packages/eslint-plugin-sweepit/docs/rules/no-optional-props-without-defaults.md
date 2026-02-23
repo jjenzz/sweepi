@@ -54,4 +54,3 @@ function Button({ tone = 'primary' }: ButtonProps) {
 2. Move time/readiness checks higher in the tree before rendering the component.
 3. Keep component contracts strict and explicit.
 4. AI agents: default missing optional props at the boundary or move readiness branching out of the component contract.
-

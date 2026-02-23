@@ -87,4 +87,3 @@ interface UserCardRootProps {
   id: string
 }
 ```
-

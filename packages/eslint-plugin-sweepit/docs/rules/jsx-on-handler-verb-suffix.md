@@ -83,4 +83,3 @@ With custom options:
 // after
 <Input onValueChange={handleChange} />
 ```
-

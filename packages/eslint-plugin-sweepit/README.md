@@ -18,15 +18,7 @@ export default [...sweepit.configs.react];
 
 ## Type Information (Accuracy Boost)
 
-Most rules are AST-first and work without TypeScript project services.
-
-Some rules become more accurate when ESLint has type information available (for example, they can resolve referenced aliases in `*Props` contracts):
-
-- `sweepit/no-array-props`
-- `sweepit/no-object-props`
-- `sweepit/no-optional-props-without-defaults`
-
-To enable type-aware linting in your app config:
+`configs.react` enables TypeScript project services by default:
 
 ```js
 languageOptions: {
@@ -37,6 +29,13 @@ languageOptions: {
 }
 ```
 
+This improves accuracy for rules like:
+
+- `sweepit/no-array-props`
+- `sweepit/no-object-props`
+- `sweepit/no-optional-props-without-defaults`
+- `@typescript-eslint/no-floating-promises`
+
 ## What `configs.react` includes
 
 The exported React config is opinionated. It enables:
@@ -46,15 +45,15 @@ The exported React config is opinionated. It enables:
   - `eslint-plugin-react-hooks`
   - `eslint-plugin-react-you-might-not-need-an-effect`
   - `@typescript-eslint/eslint-plugin` (with `@typescript-eslint/parser`)
-- Third-party rules (all as `error`):
+- Third-party rules:
   - `react/jsx-handler-names`
   - `react/jsx-no-constructed-context-values`
   - `react/jsx-no-useless-fragment`
   - `react/jsx-pascal-case`
   - `react/no-unstable-nested-components`
-  - `react-hooks/rules-of-hooks`
-  - `react-hooks/exhaustive-deps`
-  - `react-you-might-not-need-an-effect/no-effect`
+  - `@typescript-eslint/no-floating-promises`
+  - all rules from `eslint-plugin-react-hooks` `recommended` config
+  - all rules from `eslint-plugin-react-you-might-not-need-an-effect` `recommended` config
 - Sweepit rules listed below (all as `error` in the default config)
 
 ## Customize rule defaults
@@ -80,27 +79,27 @@ export default [
 
 ## Included rules
 
-| Rule | Description |
-| --- | --- |
-| [`sweepit/no-title-case-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-title-case-props.md) | Disallows TitleCase JSX props and enforces camelCase prop names. |
-| [`sweepit/no-custom-kebab-case-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-custom-kebab-case-props.md) | Disallows custom kebab-case JSX props (except allowed prefixes like `aria-*` and `data-*`). |
-| [`sweepit/no-set-prefix-utils`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-set-prefix-utils.md) | Reserves `set*` naming for `useState` setters, not utility/helper functions. |
-| [`sweepit/no-useless-hook`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-useless-hook.md) | Disallows `use*` functions that do not call a real React hook. |
-| [`sweepit/no-hook-jsx`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-hook-jsx.md) | Disallows hooks returning JSX; `use*` should return behavior/data, not markup. |
-| [`sweepit/no-exported-context-hooks`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-exported-context-hooks.md) | Disallows exporting `use*Context` hooks to keep context internals private. |
-| [`sweepit/no-handler-return-type`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-handler-return-type.md) | Enforces `void` return types for `on*` handler prop contracts. |
-| [`sweepit/jsx-server-action-prop-suffix`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-server-action-prop-suffix.md) | Requires async callback props to be named `action` or end with `Action`. |
-| [`sweepit/jsx-on-handler-verb-suffix`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-on-handler-verb-suffix.md) | Ensures `on*` handler prop names end with a verb (for example `onValueChange`). |
-| [`sweepit/no-render-helper-functions`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-render-helper-functions.md) | Disallows JSX-returning functions unless they use PascalCase component naming. |
-| [`sweepit/no-element-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-element-props.md) | Restricts `ReactNode`/`ReactElement` prop usage to explicit composition conventions (`children`/`render`). |
-| [`sweepit/no-componenttype-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-componenttype-props.md) | Disallows `ComponentType`/`FC`/`FunctionComponent` props in component contracts. |
-| [`sweepit/no-object-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md) | Disallows object-typed members in `*Props` type definitions (except `style`). |
-| [`sweepit/no-array-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md) | Disallows array/tuple-typed members in `*Props` type definitions. |
-| [`sweepit/no-prefixed-prop-bundles`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prefixed-prop-bundles.md) | Treats grouped prefixed prop declarations (for example `userName/userEmail/userRole`) as a composition-pressure signal once they hit a configured threshold (default `3`). |
-| [`sweepit/no-optional-props-without-defaults`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md) | Disallows optional component props unless defaulted at the component boundary; type info improves optional-prop detection accuracy. |
-| [`sweepit/no-boolean-capability-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-boolean-capability-props.md) | Disallows boolean props without associated control handlers (for example `open` without `onOpenChange`) in component contracts. |
-| [`sweepit/max-custom-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/max-custom-props.md) | Limits custom prop count in `*Props` contracts (default max `8`) to surface composition pressure early. |
-| [`sweepit/jsx-bem-compound-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-bem-compound-naming.md) | Enforces block-prefixed naming for exported compound component parts. |
-| [`sweepit/jsx-compound-part-export-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-compound-part-export-naming.md) | Enforces `Root`/part alias export naming for compound component modules. |
-| [`sweepit/no-pass-through-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-pass-through-props.md) | Disallows props that are only forwarded unchanged to children. |
-| [`sweepit/jsx-flat-owner-tree`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-flat-owner-tree.md) | Encourages flatter parent component ownership trees by limiting deep handoff chains. |
+| Rule                                                                                                                                                                        | Description                                                                                                                                                                |
+| --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| [`sweepit/no-title-case-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-title-case-props.md)                               | Disallows TitleCase JSX props and enforces camelCase prop names.                                                                                                           |
+| [`sweepit/no-custom-kebab-case-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-custom-kebab-case-props.md)                 | Disallows custom kebab-case JSX props (except allowed prefixes like `aria-*` and `data-*`).                                                                                |
+| [`sweepit/no-set-prefix-utils`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-set-prefix-utils.md)                               | Reserves `set*` naming for `useState` setters, not utility/helper functions.                                                                                               |
+| [`sweepit/no-useless-hook`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-useless-hook.md)                                       | Disallows `use*` functions that do not call a real React hook.                                                                                                             |
+| [`sweepit/no-hook-jsx`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-hook-jsx.md)                                               | Disallows hooks returning JSX; `use*` should return behavior/data, not markup.                                                                                             |
+| [`sweepit/no-exported-context-hooks`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-exported-context-hooks.md)                   | Disallows exporting `use*Context` hooks to keep context internals private.                                                                                                 |
+| [`sweepit/no-handler-return-type`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-handler-return-type.md)                         | Enforces `void` return types for `on*` handler prop contracts.                                                                                                             |
+| [`sweepit/jsx-server-action-prop-suffix`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-server-action-prop-suffix.md)           | Requires async callback props to be named `action` or end with `Action`.                                                                                                   |
+| [`sweepit/jsx-on-handler-verb-suffix`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-on-handler-verb-suffix.md)                 | Ensures `on*` handler prop names end with a verb (for example `onValueChange`).                                                                                            |
+| [`sweepit/no-render-helper-functions`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-render-helper-functions.md)                 | Disallows JSX-returning functions unless they use PascalCase component naming.                                                                                             |
+| [`sweepit/no-element-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-element-props.md)                                     | Restricts `ReactNode`/`ReactElement` prop usage to explicit composition conventions (`children`/`render`).                                                                 |
+| [`sweepit/no-componenttype-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-componenttype-props.md)                         | Disallows `ComponentType`/`FC`/`FunctionComponent` props in component contracts.                                                                                           |
+| [`sweepit/no-object-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md)                                       | Disallows object-typed members in `*Props` type definitions (except `style`).                                                                                              |
+| [`sweepit/no-array-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md)                                         | Disallows array/tuple-typed members in `*Props` type definitions.                                                                                                          |
+| [`sweepit/no-prefixed-prop-bundles`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prefixed-prop-bundles.md)                     | Treats grouped prefixed prop declarations (for example `userName/userEmail/userRole`) as a composition-pressure signal once they hit a configured threshold (default `3`). |
+| [`sweepit/no-optional-props-without-defaults`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md) | Disallows optional component props unless defaulted at the component boundary; type info improves optional-prop detection accuracy.                                        |
+| [`sweepit/no-boolean-capability-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-boolean-capability-props.md)               | Disallows boolean props without associated control handlers (for example `open` without `onOpenChange`) in component contracts.                                            |
+| [`sweepit/max-custom-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/max-custom-props.md)                                     | Limits custom prop count in `*Props` contracts (default max `8`) to surface composition pressure early.                                                                    |
+| [`sweepit/jsx-bem-compound-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-bem-compound-naming.md)                       | Enforces block-prefixed naming for exported compound component parts.                                                                                                      |
+| [`sweepit/jsx-compound-part-export-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-compound-part-export-naming.md)       | Enforces `Root`/part alias export naming for compound component modules.                                                                                                   |
+| [`sweepit/no-pass-through-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-pass-through-props.md)                           | Disallows props that are only forwarded unchanged to children.                                                                                                             |
+| [`sweepit/jsx-flat-owner-tree`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-flat-owner-tree.md)                               | Encourages flatter parent component ownership trees by limiting deep handoff chains.                                                                                       |

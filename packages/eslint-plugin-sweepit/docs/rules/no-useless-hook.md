@@ -68,4 +68,3 @@ function getConfig() {
   return { theme: 'dark' };
 }
 ```
-

@@ -10,8 +10,6 @@ function createReactConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
     plugins: {
       sweepit: sweepitPlugin,
       react: reactPlugin as unknown as ESLint.Plugin,
-      'react-hooks': reactHooksPlugin as unknown as ESLint.Plugin,
-      'react-you-might-not-need-an-effect': reactNoEffectPlugin as unknown as ESLint.Plugin,
       '@typescript-eslint': tsEslintPlugin as unknown as ESLint.Plugin,
     },
     languageOptions: {
@@ -19,6 +17,8 @@ function createReactConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       parserOptions: {
         ecmaVersion: 'latest',
         sourceType: 'module',
+        projectService: true,
+        tsconfigRootDir: process.cwd(),
         ecmaFeatures: {
           jsx: true,
         },
@@ -41,9 +41,7 @@ function createReactConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       'react/jsx-no-useless-fragment': 'error',
       'react/jsx-pascal-case': 'error',
       'react/no-unstable-nested-components': 'error',
-      'react-hooks/rules-of-hooks': 'error',
-      'react-hooks/exhaustive-deps': 'error',
-      'react-you-might-not-need-an-effect/no-effect': 'error',
+      '@typescript-eslint/no-floating-promises': 'error',
       'sweepit/no-title-case-props': 'error',
       'sweepit/no-custom-kebab-case-props': 'error',
       'sweepit/no-set-prefix-utils': 'error',
@@ -69,7 +67,11 @@ function createReactConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
     },
   };
 
-  return [reactConfig];
+  return [
+    reactHooksPlugin.configs.flat.recommended,
+    reactNoEffectPlugin.configs.recommended,
+    reactConfig,
+  ];
 }
 
 export { createReactConfig };

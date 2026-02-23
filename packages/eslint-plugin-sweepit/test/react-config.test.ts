@@ -11,24 +11,41 @@ describe('plugin:sweepit/react', () => {
   it('enables the expected third-party rule set', () => {
     const reactConfigList = plugin.configs?.react as Array<{
       plugins?: Record<string, unknown>;
-      languageOptions?: { parser?: unknown };
+      languageOptions?: {
+        parser?: unknown;
+        parserOptions?: {
+          projectService?: boolean;
+          tsconfigRootDir?: string;
+        };
+      };
       rules?: Record<string, unknown>;
     }>;
-    const reactConfig = reactConfigList[0];
+    const reactHooksConfig = reactConfigList[0];
+    const noEffectConfig = reactConfigList[1];
+    const reactConfig = reactConfigList[2];
 
+    expect(reactConfigList.length).toBeGreaterThanOrEqual(3);
+    expect(reactHooksConfig.rules).toBeDefined();
+    expect(reactHooksConfig.rules?.['react-hooks/rules-of-hooks']).toBe('error');
+    expect(reactHooksConfig.rules?.['react-hooks/exhaustive-deps']).toBe('warn');
+    expect(noEffectConfig.rules).toBeDefined();
+    expect(
+      Object.keys(noEffectConfig.rules ?? {}).some((ruleName) =>
+        ruleName.startsWith('react-you-might-not-need-an-effect/'),
+      ),
+    ).toBe(true);
     expect(reactConfig.rules).toBeDefined();
     expect(reactConfig.plugins?.react).toBeDefined();
-    expect(reactConfig.plugins?.['react-hooks']).toBeDefined();
     expect(reactConfig.plugins?.['@typescript-eslint']).toBeDefined();
     expect(reactConfig.languageOptions?.parser).toBeDefined();
+    expect(reactConfig.languageOptions?.parserOptions?.projectService).toBe(true);
+    expect(reactConfig.languageOptions?.parserOptions?.tsconfigRootDir).toBe(process.cwd());
     expect(reactConfig.rules?.['react/jsx-handler-names']).toBeDefined();
     expect(reactConfig.rules?.['react/jsx-no-constructed-context-values']).toBe('error');
     expect(reactConfig.rules?.['react/jsx-no-useless-fragment']).toBe('error');
     expect(reactConfig.rules?.['react/jsx-pascal-case']).toBe('error');
     expect(reactConfig.rules?.['react/no-unstable-nested-components']).toBe('error');
-    expect(reactConfig.rules?.['react-hooks/rules-of-hooks']).toBe('error');
-    expect(reactConfig.rules?.['react-hooks/exhaustive-deps']).toBe('error');
-    expect(reactConfig.rules?.['react-you-might-not-need-an-effect/no-effect']).toBe('error');
+    expect(reactConfig.rules?.['@typescript-eslint/no-floating-promises']).toBe('error');
     expect(reactConfig.rules?.['sweepit/no-title-case-props']).toBe('error');
     expect(reactConfig.rules?.['sweepit/no-custom-kebab-case-props']).toBe('error');
     expect(reactConfig.rules?.['sweepit/no-set-prefix-utils']).toBe('error');

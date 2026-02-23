@@ -73,4 +73,3 @@ export interface DialogRootProps {
   onOpenChange: (open: boolean) => void;
 }
 ```
-

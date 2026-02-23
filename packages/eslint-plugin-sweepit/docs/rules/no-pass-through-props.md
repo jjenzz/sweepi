@@ -59,4 +59,3 @@ function Card({ title }: { title: string }) {
   return <Heading title={headingText} />;
 }
 ```
-
