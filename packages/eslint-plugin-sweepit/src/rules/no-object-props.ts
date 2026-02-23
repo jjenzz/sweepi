@@ -1,9 +1,32 @@
 import type { Rule } from 'eslint';
 import ts from 'typescript';
 
-interface JSXExpressionContainer {
-  type: 'JSXExpressionContainer';
-  expression?: (Rule.Node & { type?: string }) | null;
+function getTypeName(node: Rule.Node | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as {
+    type?: string;
+    name?: string;
+    right?: { name?: string };
+  };
+  if (typedNode.type === 'Identifier' && typedNode.name) return typedNode.name;
+  if (typedNode.type === 'TSQualifiedName' && typedNode.right?.name) return typedNode.right.name;
+  return null;
+}
+
+function getPropertyName(node: Rule.Node | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as {
+    type?: string;
+    name?: string;
+    value?: string;
+  };
+  if (typedNode.type === 'Identifier' && typedNode.name) return typedNode.name;
+  if (typedNode.type === 'Literal' && typeof typedNode.value === 'string') return typedNode.value;
+  return null;
+}
+
+function isPropsTypeName(name: string | undefined): boolean {
+  return Boolean(name?.endsWith('Props'));
 }
 
 const rule: Rule.RuleModule = {
@@ -11,12 +34,12 @@ const rule: Rule.RuleModule = {
     type: 'suggestion',
     docs: {
       description:
-        'Disallow object-valued JSX props (more accurate when TypeScript type information is available)',
+        'Disallow object-typed members in TypeScript type definitions whose name ends with Props',
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md',
     },
     messages: {
       noObjectProps:
-        "Object value passed to prop '{{prop}}'. Avoid object props; prefer primitive props and compound composition. If object-shaped data must be shared across parts, use private context inside the compound root instead of passing object props. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md.",
+        "Object type declared for '{{prop}}' in '{{propsType}}'. Avoid object props; prefer primitive props and compound composition. If object-shaped data must be shared across parts, use private context inside the compound root instead of passing object props. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md.",
     },
     schema: [],
   },
@@ -40,6 +63,7 @@ const rule: Rule.RuleModule = {
       ).parserServices;
     const checker = parserServices?.program?.getTypeChecker();
     const hasTypeInformation = Boolean(checker && parserServices?.esTreeNodeToTSNodeMap);
+    const localTypeAliases = new Map<string, Rule.Node>();
 
     function isDisallowedObjectType(type: ts.Type | undefined): boolean {
       if (!type || !checker) return false;
@@ -58,35 +82,134 @@ const rule: Rule.RuleModule = {
       return isObjectLike;
     }
 
-    function expressionHasObjectType(expression: Rule.Node): boolean {
-      if (!hasTypeInformation || !checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(expression);
-      if (!tsNode) return false;
-      return isDisallowedObjectType(checker.getTypeAtLocation(tsNode));
+    function memberHasObjectType(typeAnnotationNode: Rule.Node | undefined): boolean {
+      if (!typeAnnotationNode) return false;
+      const annotationNode = (typeAnnotationNode as { typeAnnotation?: Rule.Node }).typeAnnotation;
+      if (!annotationNode) return false;
+
+      if (hasTypeInformation && checker && parserServices?.esTreeNodeToTSNodeMap) {
+        const tsNode = parserServices.esTreeNodeToTSNodeMap.get(annotationNode);
+        if (tsNode && isDisallowedObjectType(checker.getTypeAtLocation(tsNode))) return true;
+      }
+
+      return isObjectLikeTypeNode(annotationNode);
+    }
+
+    function isObjectLikeTypeNode(typeNode: Rule.Node | undefined): boolean {
+      if (!typeNode) return false;
+      const typedNode = typeNode as {
+        type?: string;
+        types?: Rule.Node[];
+        typeAnnotation?: Rule.Node;
+      };
+      if (typedNode.type === 'TSTypeLiteral') return true;
+      if (typedNode.type === 'TSParenthesizedType' || typedNode.type === 'TSOptionalType') {
+        return isObjectLikeTypeNode(typedNode.typeAnnotation);
+      }
+      if (typedNode.type === 'TSUnionType' || typedNode.type === 'TSIntersectionType') {
+        return (typedNode.types ?? []).some((entry) => isObjectLikeTypeNode(entry));
+      }
+      return false;
+    }
+
+    function visitPropsType(
+      typeNode: Rule.Node | undefined,
+      propsTypeName: string,
+      seenAliases: Set<string>,
+    ): void {
+      if (!typeNode) return;
+      const typedNode = typeNode as {
+        type?: string;
+        members?: Rule.Node[];
+        types?: Rule.Node[];
+        typeAnnotation?: Rule.Node;
+        typeName?: Rule.Node;
+      };
+
+      if (typedNode.type === 'TSTypeLiteral') {
+        for (const member of typedNode.members ?? []) {
+          const property = member as {
+            type?: string;
+            key?: Rule.Node;
+            typeAnnotation?: Rule.Node;
+          };
+          if (property.type !== 'TSPropertySignature' || !property.typeAnnotation) continue;
+          const propName = getPropertyName(property.key);
+          if (!propName || propName === 'style') continue;
+          if (!memberHasObjectType(property.typeAnnotation)) continue;
+          context.report({
+            node: member,
+            messageId: 'noObjectProps',
+            data: { prop: propName, propsType: propsTypeName },
+          });
+        }
+        return;
+      }
+
+      if (typedNode.type === 'TSUnionType' || typedNode.type === 'TSIntersectionType') {
+        for (const entry of typedNode.types ?? []) {
+          visitPropsType(entry, propsTypeName, seenAliases);
+        }
+        return;
+      }
+
+      if (
+        typedNode.type === 'TSParenthesizedType' ||
+        typedNode.type === 'TSOptionalType' ||
+        typedNode.type === 'TSTypeOperator'
+      ) {
+        visitPropsType(typedNode.typeAnnotation, propsTypeName, seenAliases);
+        return;
+      }
+
+      if (typedNode.type === 'TSTypeReference') {
+        const typeName = getTypeName(typedNode.typeName);
+        if (!typeName || seenAliases.has(typeName)) return;
+        const aliasType = localTypeAliases.get(typeName);
+        if (!aliasType) return;
+        const nextSeenAliases = new Set(seenAliases);
+        nextSeenAliases.add(typeName);
+        visitPropsType(aliasType, propsTypeName, nextSeenAliases);
+      }
     }
 
     return {
-      JSXAttribute(node: Rule.Node) {
-        const attr = node as unknown as {
-          name?: { type?: string; name?: string };
-          value?: { type?: string } | null;
+      TSTypeAliasDeclaration(node: Rule.Node) {
+        const declaration = node as {
+          id?: { type?: string; name?: string };
+          typeAnnotation?: Rule.Node;
         };
-        if (attr.name?.type !== 'JSXIdentifier' || !attr.name.name) return;
-        if (attr.name.name === 'style') return;
-        if (!attr.value || attr.value.type !== 'JSXExpressionContainer') return;
+        if (!declaration.id || declaration.id.type !== 'Identifier' || !declaration.id.name) return;
+        if (!declaration.typeAnnotation) return;
 
-        const expression = (attr.value as JSXExpressionContainer).expression;
-        if (!expression) return;
+        localTypeAliases.set(declaration.id.name, declaration.typeAnnotation);
+        if (!isPropsTypeName(declaration.id.name)) return;
+        visitPropsType(declaration.typeAnnotation, declaration.id.name, new Set<string>());
+      },
+      TSInterfaceDeclaration(node: Rule.Node) {
+        const declaration = node as {
+          id?: { type?: string; name?: string };
+          body?: { body?: Rule.Node[] };
+        };
+        if (!declaration.id || declaration.id.type !== 'Identifier' || !declaration.id.name) return;
+        if (!isPropsTypeName(declaration.id.name)) return;
 
-        const isInlineObject = expression.type === 'ObjectExpression';
-        const isObjectTyped = expressionHasObjectType(expression);
-        if (!isInlineObject && !isObjectTyped) return;
-
-        context.report({
-          node: attr.value as unknown as Rule.Node,
-          messageId: 'noObjectProps',
-          data: { prop: attr.name.name },
-        });
+        for (const member of declaration.body?.body ?? []) {
+          const property = member as {
+            type?: string;
+            key?: Rule.Node;
+            typeAnnotation?: Rule.Node;
+          };
+          if (property.type !== 'TSPropertySignature' || !property.typeAnnotation) continue;
+          const propName = getPropertyName(property.key);
+          if (!propName || propName === 'style') continue;
+          if (!memberHasObjectType(property.typeAnnotation)) continue;
+          context.report({
+            node: member,
+            messageId: 'noObjectProps',
+            data: { prop: propName, propsType: declaration.id.name },
+          });
+        }
       },
     };
   },

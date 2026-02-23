@@ -1,4 +1,4 @@
-# Disallow object props in JSX (`no-object-props`)
+# Disallow object props in `*Props` type definitions (`no-object-props`)
 
 Object props often couple components to data models and business-layer shapes.
 
@@ -12,21 +12,19 @@ Object props often couple components to data models and business-layer shapes.
 
 ## Rule Details
 
-- **Target**: JSX attributes with expression values.
-- **Reported**:
-  - Inline object literals (`{{ ... }}`).
-  - Expressions whose TypeScript type resolves to an object (for example identifiers, member access, and function calls returning objects) **when type information is available**.
+- **Target**: TypeScript type definitions whose name ends with `Props`.
+- **Reported**: property members typed as objects.
 - **Allowed**:
-  - Primitive values.
-  - `style` object values (`style={{ ... }}` or `style={styleObject}`).
-  - Function values (for event handlers, callbacks, etc.).
-  - Non-object expressions.
+  - Primitive member types.
+  - Function member types.
+  - `style` object members (for style contracts).
+  - Type definitions not ending in `Props`.
 
 ### Type Information
 
 This rule is AST-first and works without TypeScript project services.
 
-When type information is enabled, detection is more accurate for non-literal expressions (for example `user={user}` and `config={getConfig()}`).
+When type information is enabled, detection is more accurate for alias-based members (for example `user: UserRow` where `UserRow` is an object type).
 
 ## Options
 
@@ -36,41 +34,57 @@ This rule has no options.
 
 ### Incorrect
 
-```tsx
-<UserCard user={userRow} />
-<Card config={getCardConfig()} />
+```ts
+interface UserCardProps {
+  user: { id: string; email: string }
+}
+
+type CardProps = {
+  config: { dense: boolean }
+}
 ```
 
 ### Correct
 
-```tsx
-<Card style={{ color: 'red' }} />
-<Card tone="info" elevation={2} />
-<UserRow name={user.name} email={user.email} />
-<Dialog onOpenChange={onOpenChange} />
+```ts
+interface CardProps {
+  tone: 'info' | 'warning';
+  elevation: number;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+}
+
+// not props
+interface UserOptions {
+  user: { id: string; email: string }
+}
 ```
 
 ## How To Fix
 
-1. Replace object props with explicit primitive props for only what the component needs.
+1. Replace object-typed members with explicit primitive members for only what the component needs.
 2. Move structure into component composition (compound parts + children) instead of data bundles.
 3. If object state must be shared across composed parts, keep it in private component context instead of prop contracts.
 4. Keep object-shaped data at ownership boundaries, not leaf component APIs.
 
-```tsx
+```ts
 // before
-<UserRow user={user} />;
+interface UserRowProps {
+  user: User
+}
 
 // after
-<UserRow name={user.name} email={user.email} />;
+interface UserRowProps {
+  name: string
+  email: string
+}
 ```
 
 If object-shaped data truly must flow to multiple compound parts, prefer context scoped to the compound component:
 
-```tsx
-<UserCard.Root id={user.id}>
-  <UserCard.Header />
-  <UserCard.Body />
-</UserCard.Root>
+```ts
+interface UserCardRootProps {
+  id: string
+}
 ```
 

@@ -1,4 +1,4 @@
-# Disallow array props in JSX (`no-array-props`)
+# Disallow array props in `*Props` type definitions (`no-array-props`)
 
 Array props often hide component requirements behind bundled list structures.
 
@@ -10,20 +10,18 @@ Array props often hide component requirements behind bundled list structures.
 
 ## Rule Details
 
-- **Target**: JSX attributes with expression values.
-- **Reported**:
-  - Inline array literals (`{[ ... ]}`).
-  - Expressions whose TypeScript type resolves to an array/tuple (for example identifiers and function calls returning arrays) **when type information is available**.
+- **Target**: TypeScript type definitions whose name ends with `Props`.
+- **Reported**: property members typed as arrays or tuples.
 - **Allowed**:
-  - Primitive values.
-  - Function values (for handlers/callbacks).
-  - Non-array expressions.
+  - Primitive member types.
+  - Function member types.
+  - Type definitions not ending in `Props`.
 
 ### Type Information
 
 This rule is AST-first and works without TypeScript project services.
 
-When type information is enabled, detection is more accurate for non-literal expressions (for example `items={items}` and `items={getItems()}`).
+When type information is enabled, detection is more accurate for alias-based members (for example `items: Items` where `type Items = string[]`).
 
 ## Options
 
@@ -33,44 +31,57 @@ This rule has no options.
 
 ### Incorrect
 
-```tsx
-<List items={[1, 2, 3]} />
-<TagList tags={tags} />
-<Menu items={getMenuItems()} />
+```ts
+interface ListProps {
+  items: string[]
+}
+
+type MenuProps = {
+  entries: Array<string>
+}
+
+type TagListProps = {
+  tags: { label: string }[]
+}
 ```
 
 ### Correct
 
-```tsx
-<List total={3} />
-<TagList primaryTag={tagA} secondaryTag={tagB} />
-<Menu>
-  <Menu.Item label="Dashboard" />
-  <Menu.Item label="Settings" />
-</Menu>
+```ts
+interface ListProps {
+  total: number
+  label: string
+}
+
+// not props
+interface MenuOptions {
+  entries: string[]
+}
 ```
 
 ## How To Fix
 
-1. Replace array props with explicit, primitive props for actual component needs.
+1. Replace array-typed members with explicit primitive members for actual component needs.
 2. Prefer children/compound-part composition for repeated UI structures.
 3. If list state must be shared across composed parts, keep it in private component context instead of prop contracts.
 4. Keep array-shaped data at higher ownership boundaries, not component contracts.
 
-```tsx
+```ts
 // before
-<TagList tags={tags} />;
+interface TagListProps {
+  tags: string[]
+}
 
 // after
-<TagList firstTag={tags[0]} secondTag={tags[1]} />;
+interface TagListProps {
+  variant: 'primary' | 'secondary';
+  children: React.ReactNode;
+}
+
+interface TagListItemProps {
+  disabled: boolean;
+  children: React.ReactNode;
+}
 ```
 
-If array-shaped data truly must flow to multiple compound parts, prefer context scoped to the compound component:
-
-```tsx
-<Menu.Root selectedCount={selectedCount}>
-  <Menu.List />
-  <Menu.Footer />
-</Menu.Root>
-```
-
+If array-shaped data truly must flow to multiple compound parts, prefer context scoped to the compound component.

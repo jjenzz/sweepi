@@ -27,54 +27,54 @@ const ruleTester = new RuleTester({
 describe('no-array-props', () => {
   ruleTester.run('no-array-props', rule, {
     valid: [
-      '<Comp tone="info" />',
-      '<Comp total={3} />',
-      '<Comp onOpenChange={onOpenChange} />',
-      '<Comp />',
+      'interface ButtonProps { tone: string; count: number; onOpenChange: (open: boolean) => void }',
+      'type ButtonProps = { tone: "info" | "warning"; count: number }',
+      'interface ButtonOptions { items: string[] }',
+      'type CardProps = { title: string }',
     ],
     invalid: [
       {
-        code: '<Comp items={[1, 2, 3]} />',
+        code: 'interface ButtonProps { items: string[] }',
         errors: [
           {
             messageId: 'noArrayProps',
-            data: { prop: 'items' },
+            data: { prop: 'items', propsType: 'ButtonProps' },
           },
         ],
       },
       {
-        code: '<Comp entries={["a", "b"]} />',
+        code: 'type ButtonProps = { entries: Array<string> }',
         errors: [
           {
             messageId: 'noArrayProps',
-            data: { prop: 'entries' },
+            data: { prop: 'entries', propsType: 'ButtonProps' },
           },
         ],
       },
       {
-        code: 'const items: number[] = [1, 2, 3]; <Comp items={items} />',
+        code: 'type ButtonProps = { values: readonly string[] }',
         errors: [
           {
             messageId: 'noArrayProps',
-            data: { prop: 'items' },
+            data: { prop: 'values', propsType: 'ButtonProps' },
           },
         ],
       },
       {
-        code: 'const entries: readonly string[] = ["a", "b"]; <Comp entries={entries} />',
+        code: 'type ButtonProps = { pair: [string, number] }',
         errors: [
           {
             messageId: 'noArrayProps',
-            data: { prop: 'entries' },
+            data: { prop: 'pair', propsType: 'ButtonProps' },
           },
         ],
       },
       {
-        code: 'function getValues(): string[] { return ["x", "y"]; } <Comp values={getValues()} />',
+        code: 'type Items = string[]; interface MenuProps { items: Items }',
         errors: [
           {
             messageId: 'noArrayProps',
-            data: { prop: 'values' },
+            data: { prop: 'items', propsType: 'MenuProps' },
           },
         ],
       },
