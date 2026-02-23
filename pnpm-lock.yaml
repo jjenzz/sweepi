@@ -7,6 +7,9 @@ settings:
 importers:
   .:
     devDependencies:
+      '@auto-it/magic-zero':
+        specifier: ^11.3.6
+        version: 11.3.6(@types/node@24.10.13)(encoding@0.1.13)(typescript@5.9.3)
       auto:
         specifier: ^11.3.6
         version: 11.3.6(@types/node@24.10.13)(encoding@0.1.13)(typescript@5.9.3)
@@ -32,8 +35,8 @@ importers:
         specifier: ^7.0.0
         version: 7.0.1(eslint@9.39.3)
       eslint-plugin-react-you-might-not-need-an-effect:
-        specifier: ^0.3.2
-        version: 0.3.2(eslint@9.39.3)
+        specifier: ^0.9.1
+        version: 0.9.1(eslint@9.39.3)
     devDependencies:
       '@types/node':
         specifier: ^24.3.0
@@ -70,6 +73,12 @@ packages:
     peerDependenciesMeta:
       '@types/node':
         optional: true
+
+  '@auto-it/magic-zero@11.3.6':
+    resolution:
+      {
+        integrity: sha512-NeQzcPrJ7zWV3aFGLvkgnk+ISMCqgR2PiE80Lr+lRLUFwHcZEk0Hjs9avORn0+2ELQYR5IfT2rE3Ct7GSgoOtw==,
+      }
 
   '@auto-it/npm@11.3.6':
     resolution:
@@ -3289,14 +3298,14 @@ packages:
     peerDependencies:
       eslint: ^3.0.0 || ^4.0.0 || ^5.0.0 || ^6.0.0 || ^7.0.0 || ^8.0.0-0 || ^9.0.0
 
-  eslint-plugin-react-you-might-not-need-an-effect@0.3.2:
+  eslint-plugin-react-you-might-not-need-an-effect@0.9.1:
     resolution:
       {
-        integrity: sha512-nLMHtcXOo892r4Xyp2eF5GTp8Prn3rWDgjkdssOqT1TwWkhz0LviAbJBLMG1KbAblM+KreqWA7pp5V2TowHCNQ==,
+        integrity: sha512-P6Zq5hAKc10Zg5V6vusm3+WZc59OHqHeCTTH2soW3r9fBmeJssuHzltIEKtrONXqFwHVWw3bz2qGlYuO2rBk1g==,
       }
     engines: { node: '>=14.0.0' }
     peerDependencies:
-      eslint: '>=7.0.0'
+      eslint: '>=8.40.0'
 
   eslint-plugin-react@7.37.5:
     resolution:
@@ -3313,22 +3322,6 @@ packages:
         integrity: sha512-sNXOfKCn74rt8RICKMvJS7XKV/Xk9kA7DyJr8mJik3S7Cwgy3qlkkmyS2uQB3jiJg6VNdZd/pDBJu0nvG2NlTg==,
       }
     engines: { node: ^18.18.0 || ^20.9.0 || >=21.1.0 }
-
-  eslint-utils@3.0.0:
-    resolution:
-      {
-        integrity: sha512-uuQC43IGctw68pJA1RgbQS8/NP7rch6Cwd4j3ZBtgo4/8Flj4eGE7ZYSZRN3iq5pVUv6GPdW5Z1RFleo84uLDA==,
-      }
-    engines: { node: ^10.0.0 || ^12.0.0 || >= 14.0.0 }
-    peerDependencies:
-      eslint: '>=5'
-
-  eslint-visitor-keys@2.1.0:
-    resolution:
-      {
-        integrity: sha512-0rSmRBzXgDzIsD6mGdJgevzgezI534Cer5L/vyMX0kHzT/jiB43jRhd9YUlMGYLQy2zprNmoT8qasCGtY+QaKw==,
-      }
-    engines: { node: '>=10' }
 
   eslint-visitor-keys@3.4.3:
     resolution:
@@ -7568,6 +7561,21 @@ snapshots:
       - encoding
       - supports-color
 
+  '@auto-it/magic-zero@11.3.6(@types/node@24.10.13)(encoding@0.1.13)(typescript@5.9.3)':
+    dependencies:
+      '@auto-it/core': 11.3.6(@types/node@24.10.13)(encoding@0.1.13)(typescript@5.9.3)
+      fp-ts: 2.16.11
+      io-ts: 2.2.22(fp-ts@2.16.11)
+      semver: 7.7.4
+      tslib: 2.1.0
+    transitivePeerDependencies:
+      - '@swc/core'
+      - '@swc/wasm'
+      - '@types/node'
+      - encoding
+      - supports-color
+      - typescript
+
   '@auto-it/npm@11.3.6(@types/node@24.10.13)(encoding@0.1.13)(typescript@5.9.3)':
     dependencies:
       '@auto-it/core': 11.3.6(@types/node@24.10.13)(encoding@0.1.13)(typescript@5.9.3)
@@ -9710,10 +9718,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  eslint-plugin-react-you-might-not-need-an-effect@0.3.2(eslint@9.39.3):
+  eslint-plugin-react-you-might-not-need-an-effect@0.9.1(eslint@9.39.3):
     dependencies:
       eslint: 9.39.3
-      eslint-utils: 3.0.0(eslint@9.39.3)
       globals: 16.5.0
 
   eslint-plugin-react@7.37.5(eslint@9.39.3):
@@ -9742,13 +9749,6 @@ snapshots:
     dependencies:
       esrecurse: 4.3.0
       estraverse: 5.3.0
-
-  eslint-utils@3.0.0(eslint@9.39.3):
-    dependencies:
-      eslint: 9.39.3
-      eslint-visitor-keys: 2.1.0
-
-  eslint-visitor-keys@2.1.0: {}
 
   eslint-visitor-keys@3.4.3: {}
 

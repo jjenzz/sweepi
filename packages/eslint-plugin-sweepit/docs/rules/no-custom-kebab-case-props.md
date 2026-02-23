@@ -81,4 +81,3 @@ The example below allows the `x-` prefix and one exact prop:
 // after
 <Component myCustomProp="value" />
 ```
-

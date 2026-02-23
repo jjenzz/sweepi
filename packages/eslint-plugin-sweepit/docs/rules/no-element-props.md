@@ -69,4 +69,3 @@ interface CardProps {
   children: ReactNode;
 }
 ```
-

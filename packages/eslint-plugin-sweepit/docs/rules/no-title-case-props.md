@@ -44,4 +44,3 @@ This rule has no options.
 // after
 <Button helloWorld={handler} />
 ```
-

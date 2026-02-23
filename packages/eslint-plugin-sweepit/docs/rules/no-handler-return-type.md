@@ -68,4 +68,3 @@ interface DialogProps {
   onClose: () => void;
 }
 ```
-

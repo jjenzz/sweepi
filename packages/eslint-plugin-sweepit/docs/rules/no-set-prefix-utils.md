@@ -58,4 +58,3 @@ const setPrefix = (str: string) => str.toUpperCase();
 // after
 const applyPrefix = (str: string) => str.toUpperCase();
 ```
-

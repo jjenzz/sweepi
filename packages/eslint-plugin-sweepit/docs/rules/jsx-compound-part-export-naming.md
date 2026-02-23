@@ -70,4 +70,3 @@ export { ButtonGroup, ButtonGroupItem };
 // after
 export { ButtonGroup as Root, ButtonGroupItem as Item };
 ```
-

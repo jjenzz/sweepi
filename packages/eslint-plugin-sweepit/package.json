@@ -28,7 +28,7 @@
     "@typescript-eslint/parser": "^8.46.0",
     "eslint-plugin-react": "^7.37.5",
     "eslint-plugin-react-hooks": "^7.0.0",
-    "eslint-plugin-react-you-might-not-need-an-effect": "^0.3.2"
+    "eslint-plugin-react-you-might-not-need-an-effect": "^0.9.1"
   },
   "peerDependencies": {
     "eslint": "^9.0.0",
