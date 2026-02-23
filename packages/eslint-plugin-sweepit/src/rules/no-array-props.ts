@@ -1,11 +1,6 @@
 import type { Rule } from 'eslint';
 import type ts from 'typescript';
 
-interface JSXExpressionContainer {
-  type: 'JSXExpressionContainer';
-  expression?: (Rule.Node & { type?: string }) | null;
-}
-
 function getTypeName(node: Rule.Node | undefined): string | null {
   if (!node) return null;
   const typedNode = node as {
@@ -18,17 +13,33 @@ function getTypeName(node: Rule.Node | undefined): string | null {
   return null;
 }
 
+function getPropertyName(node: Rule.Node | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as {
+    type?: string;
+    name?: string;
+    value?: string;
+  };
+  if (typedNode.type === 'Identifier' && typedNode.name) return typedNode.name;
+  if (typedNode.type === 'Literal' && typeof typedNode.value === 'string') return typedNode.value;
+  return null;
+}
+
+function isPropsTypeName(name: string | undefined): boolean {
+  return Boolean(name?.endsWith('Props'));
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
     docs: {
       description:
-        'Disallow array-valued JSX props (more accurate when TypeScript type information is available)',
+        'Disallow array-typed members in TypeScript type definitions whose name ends with Props',
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md',
     },
     messages: {
       noArrayProps:
-        "Array value passed to prop '{{prop}}'. Avoid array props; prefer primitive props and compound composition. If array-shaped data must be shared across parts, use private context inside the compound root instead of passing array props. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md.",
+        "Array type declared for '{{prop}}' in '{{propsType}}'. Avoid array props; prefer primitive props and compound composition. If array-shaped data must be shared across parts, use private context inside the compound root instead of passing array props. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md.",
     },
     schema: [],
   },
@@ -52,8 +63,6 @@ const rule: Rule.RuleModule = {
       ).parserServices;
     const checker = parserServices?.program?.getTypeChecker();
     const hasTypeInformation = Boolean(checker && parserServices?.esTreeNodeToTSNodeMap);
-    const arrayTypedIdentifiers = new Set<string>();
-    const arrayReturningFunctions = new Set<string>();
     const localTypeAliases = new Map<string, Rule.Node>();
 
     function isArrayLikeTypeText(typeText: string): boolean {
@@ -67,6 +76,15 @@ const rule: Rule.RuleModule = {
       );
     }
 
+    function isDisallowedArrayType(type: ts.Type | undefined): boolean {
+      if (!type || !checker) return false;
+      if (type.isUnionOrIntersection()) {
+        return type.types.some((entry) => isDisallowedArrayType(entry));
+      }
+      if (checker.isArrayType(type) || checker.isTupleType(type)) return true;
+      return isArrayLikeTypeText(checker.typeToString(type));
+    }
+
     function isArrayLikeTypeNode(
       typeNode: Rule.Node | undefined,
       seenAliases: Set<string>,
@@ -76,7 +94,6 @@ const rule: Rule.RuleModule = {
         type?: string;
         typeAnnotation?: Rule.Node;
         types?: Rule.Node[];
-        elementType?: Rule.Node;
         typeName?: Rule.Node;
       };
 
@@ -104,46 +121,81 @@ const rule: Rule.RuleModule = {
       return false;
     }
 
-    function expressionHasArrayShapeByAst(expression: Rule.Node): boolean {
-      const typedExpression = expression as {
+    function memberHasArrayType(typeAnnotationNode: Rule.Node | undefined): boolean {
+      if (!typeAnnotationNode) return false;
+      const annotationNode = (typeAnnotationNode as { typeAnnotation?: Rule.Node }).typeAnnotation;
+      if (!annotationNode) return false;
+
+      if (hasTypeInformation && checker && parserServices?.esTreeNodeToTSNodeMap) {
+        const tsNode = parserServices.esTreeNodeToTSNodeMap.get(annotationNode);
+        if (tsNode && isDisallowedArrayType(checker.getTypeAtLocation(tsNode))) return true;
+      }
+
+      return isArrayLikeTypeNode(annotationNode, new Set<string>());
+    }
+
+    function reportIfDisallowedMember(member: Rule.Node, propsTypeName: string): void {
+      const property = member as {
         type?: string;
-        name?: string;
-        callee?: Rule.Node;
+        key?: Rule.Node;
+        typeAnnotation?: Rule.Node;
       };
-      if (typedExpression.type === 'Identifier' && typedExpression.name) {
-        return arrayTypedIdentifiers.has(typedExpression.name);
-      }
-      if (typedExpression.type === 'CallExpression' && typedExpression.callee) {
-        const callee = typedExpression.callee as {
-          type?: string;
-          name?: string;
-        };
-        return (
-          callee.type === 'Identifier' &&
-          Boolean(callee.name && arrayReturningFunctions.has(callee.name))
-        );
-      }
-      return false;
+      if (property.type !== 'TSPropertySignature' || !property.typeAnnotation) return;
+      if (!memberHasArrayType(property.typeAnnotation)) return;
+      const propName = getPropertyName(property.key) ?? '(unknown)';
+      context.report({
+        node: member,
+        messageId: 'noArrayProps',
+        data: { prop: propName, propsType: propsTypeName },
+      });
     }
 
-    function isDisallowedArrayType(type: ts.Type | undefined): boolean {
-      if (!type || !checker) return false;
+    function visitPropsType(
+      typeNode: Rule.Node | undefined,
+      propsTypeName: string,
+      seenAliases: Set<string>,
+    ): void {
+      if (!typeNode) return;
+      const typedNode = typeNode as {
+        type?: string;
+        members?: Rule.Node[];
+        types?: Rule.Node[];
+        typeAnnotation?: Rule.Node;
+        typeName?: Rule.Node;
+      };
 
-      if (type.isUnionOrIntersection()) {
-        return type.types.some((entry) => isDisallowedArrayType(entry));
+      if (typedNode.type === 'TSTypeLiteral') {
+        for (const member of typedNode.members ?? []) {
+          reportIfDisallowedMember(member, propsTypeName);
+        }
+        return;
       }
 
-      if (checker.isArrayType(type) || checker.isTupleType(type)) return true;
+      if (typedNode.type === 'TSUnionType' || typedNode.type === 'TSIntersectionType') {
+        for (const entry of typedNode.types ?? []) {
+          visitPropsType(entry, propsTypeName, seenAliases);
+        }
+        return;
+      }
 
-      // Pragmatic fallback: in some environments, checker helpers can miss aliased/inferred arrays.
-      return isArrayLikeTypeText(checker.typeToString(type));
-    }
+      if (
+        typedNode.type === 'TSParenthesizedType' ||
+        typedNode.type === 'TSOptionalType' ||
+        typedNode.type === 'TSTypeOperator'
+      ) {
+        visitPropsType(typedNode.typeAnnotation, propsTypeName, seenAliases);
+        return;
+      }
 
-    function expressionHasArrayType(expression: Rule.Node): boolean {
-      if (!hasTypeInformation || !checker || !parserServices?.esTreeNodeToTSNodeMap) return false;
-      const tsNode = parserServices.esTreeNodeToTSNodeMap.get(expression);
-      if (!tsNode) return false;
-      return isDisallowedArrayType(checker.getTypeAtLocation(tsNode));
+      if (typedNode.type === 'TSTypeReference') {
+        const typeName = getTypeName(typedNode.typeName);
+        if (!typeName || seenAliases.has(typeName)) return;
+        const aliasType = localTypeAliases.get(typeName);
+        if (!aliasType) return;
+        const nextSeenAliases = new Set(seenAliases);
+        nextSeenAliases.add(typeName);
+        visitPropsType(aliasType, propsTypeName, nextSeenAliases);
+      }
     }
 
     return {
@@ -154,87 +206,22 @@ const rule: Rule.RuleModule = {
         };
         if (!declaration.id || declaration.id.type !== 'Identifier' || !declaration.id.name) return;
         if (!declaration.typeAnnotation) return;
-        localTypeAliases.set(declaration.id.name, declaration.typeAnnotation);
-      },
-      VariableDeclarator(node: Rule.Node) {
-        const declaration = node as {
-          id?: Rule.Node;
-          init?: Rule.Node | null;
-        };
-        if (!declaration.id || declaration.id.type !== 'Identifier') return;
-        const id = declaration.id as {
-          name?: string;
-          typeAnnotation?: { typeAnnotation?: Rule.Node };
-        };
-        const variableName = id.name;
-        if (!variableName) return;
 
-        if (isArrayLikeTypeNode(id.typeAnnotation?.typeAnnotation, new Set<string>())) {
-          arrayTypedIdentifiers.add(variableName);
-        }
-        if (declaration.init?.type === 'ArrayExpression') {
-          arrayTypedIdentifiers.add(variableName);
-        }
-        if (
-          declaration.init &&
-          (declaration.init.type === 'ArrowFunctionExpression' ||
-            declaration.init.type === 'FunctionExpression')
-        ) {
-          const functionExpression = declaration.init as unknown as {
-            returnType?: { typeAnnotation?: Rule.Node };
-            body?: Rule.Node;
-          };
-          if (
-            isArrayLikeTypeNode(functionExpression.returnType?.typeAnnotation, new Set<string>())
-          ) {
-            arrayReturningFunctions.add(variableName);
-          }
-          if (functionExpression.body?.type === 'ArrayExpression') {
-            arrayReturningFunctions.add(variableName);
-          }
-        }
+        localTypeAliases.set(declaration.id.name, declaration.typeAnnotation);
+        if (!isPropsTypeName(declaration.id.name)) return;
+        visitPropsType(declaration.typeAnnotation, declaration.id.name, new Set<string>());
       },
-      FunctionDeclaration(node: Rule.Node) {
+      TSInterfaceDeclaration(node: Rule.Node) {
         const declaration = node as {
-          id?: { type?: string; name?: string } | null;
-          returnType?: { typeAnnotation?: Rule.Node };
-          body?: Rule.Node;
+          id?: { type?: string; name?: string };
+          body?: { body?: Rule.Node[] };
         };
         if (!declaration.id || declaration.id.type !== 'Identifier' || !declaration.id.name) return;
-        const functionName = declaration.id.name;
-        if (isArrayLikeTypeNode(declaration.returnType?.typeAnnotation, new Set<string>())) {
-          arrayReturningFunctions.add(functionName);
+        if (!isPropsTypeName(declaration.id.name)) return;
+
+        for (const member of declaration.body?.body ?? []) {
+          reportIfDisallowedMember(member, declaration.id.name);
         }
-        const firstStatement = (declaration.body as { body?: Rule.Node[] } | undefined)
-          ?.body?.[0] as { type?: string; argument?: Rule.Node } | undefined;
-        if (
-          firstStatement?.type === 'ReturnStatement' &&
-          firstStatement.argument?.type === 'ArrayExpression'
-        ) {
-          arrayReturningFunctions.add(functionName);
-        }
-      },
-      JSXAttribute(node: Rule.Node) {
-        const attr = node as unknown as {
-          name?: { type?: string; name?: string };
-          value?: { type?: string } | null;
-        };
-        if (attr.name?.type !== 'JSXIdentifier' || !attr.name.name) return;
-        if (!attr.value || attr.value.type !== 'JSXExpressionContainer') return;
-
-        const expression = (attr.value as JSXExpressionContainer).expression;
-        if (!expression) return;
-
-        const isInlineArray = expression.type === 'ArrayExpression';
-        const isArrayTyped = expressionHasArrayType(expression);
-        const isArrayShapeByAst = expressionHasArrayShapeByAst(expression);
-        if (!isInlineArray && !isArrayTyped && !isArrayShapeByAst) return;
-
-        context.report({
-          node: attr.value as unknown as Rule.Node,
-          messageId: 'noArrayProps',
-          data: { prop: attr.name.name },
-        });
       },
     };
   },

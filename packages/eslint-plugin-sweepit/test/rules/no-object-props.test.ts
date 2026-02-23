@@ -27,38 +27,36 @@ const ruleTester = new RuleTester({
 describe('no-object-props', () => {
   ruleTester.run('no-object-props', rule, {
     valid: [
-      '<Comp tone="info" />',
-      '<Comp style={{ color: "red" }} />',
-      'type CardStyle = { color: string }; const style: CardStyle = { color: "red" }; <Comp style={style} />',
-      '<Comp onValueChange={onValueChange} />',
-      '<Comp count={totalCount} />',
-      '<Comp />',
+      'interface ButtonProps { tone: string; onValueChange: (value: string) => void; count: number }',
+      'interface ButtonProps { style: { color: string } }',
+      'type ButtonProps = { onClick: () => void; disabled: boolean }',
+      'interface UserOptions { user: { id: string } }',
     ],
     invalid: [
       {
-        code: '<Comp options={{ dense: true, interactive: false }} />',
+        code: 'interface ButtonProps { options: { dense: boolean; interactive: boolean } }',
         errors: [
           {
             messageId: 'noObjectProps',
-            data: { prop: 'options' },
+            data: { prop: 'options', propsType: 'ButtonProps' },
           },
         ],
       },
       {
-        code: 'interface UserRow { id: string; email: string; } const user: UserRow = { id: "1", email: "a@example.com" }; <Comp user={user} />',
+        code: 'interface UserRow { id: string; email: string } interface UserCardProps { user: UserRow }',
         errors: [
           {
             messageId: 'noObjectProps',
-            data: { prop: 'user' },
+            data: { prop: 'user', propsType: 'UserCardProps' },
           },
         ],
       },
       {
-        code: 'function getConfig(): { dense: boolean } { return { dense: true }; } <Comp config={getConfig()} />',
+        code: 'type Config = { dense: boolean }; type CardProps = { config: Config }',
         errors: [
           {
             messageId: 'noObjectProps',
-            data: { prop: 'config' },
+            data: { prop: 'config', propsType: 'CardProps' },
           },
         ],
       },

@@ -20,7 +20,7 @@ export default [...sweepit.configs.react];
 
 Most rules are AST-first and work without TypeScript project services.
 
-Some rules become more accurate when ESLint has type information available (for example, they can detect typed identifiers/calls beyond inline literals):
+Some rules become more accurate when ESLint has type information available (for example, they can resolve referenced aliases in `*Props` contracts):
 
 - `sweepit/no-array-props`
 - `sweepit/no-object-props`
@@ -94,8 +94,8 @@ export default [
 | [`sweepit/no-render-helper-functions`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-render-helper-functions.md) | Disallows JSX-returning functions unless they use PascalCase component naming. |
 | [`sweepit/no-element-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-element-props.md) | Restricts `ReactNode`/`ReactElement` prop usage to explicit composition conventions (`children`/`render`). |
 | [`sweepit/no-componenttype-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-componenttype-props.md) | Disallows `ComponentType`/`FC`/`FunctionComponent` props in component contracts. |
-| [`sweepit/no-object-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md) | Disallows object-valued JSX props; with type info enabled it also catches typed identifiers/calls. |
-| [`sweepit/no-array-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md) | Disallows array-valued JSX props; with type info enabled it also catches typed identifiers/calls. |
+| [`sweepit/no-object-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md) | Disallows object-typed members in `*Props` type definitions (except `style`). |
+| [`sweepit/no-array-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md) | Disallows array/tuple-typed members in `*Props` type definitions. |
 | [`sweepit/no-prefixed-prop-bundles`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prefixed-prop-bundles.md) | Treats grouped prefixed prop declarations (for example `userName/userEmail/userRole`) as a composition-pressure signal once they hit a configured threshold (default `3`). |
 | [`sweepit/no-optional-props-without-defaults`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md) | Disallows optional component props unless defaulted at the component boundary; type info improves optional-prop detection accuracy. |
 | [`sweepit/no-boolean-capability-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-boolean-capability-props.md) | Disallows boolean props without associated control handlers (for example `open` without `onOpenChange`) in component contracts. |
