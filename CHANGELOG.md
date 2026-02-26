@@ -1,3 +1,15 @@
+# v0.0.4 (Thu Feb 26 2026)
+
+#### 🚀 Enhancement
+
+- add core baseline config and immutability cleanup [#5](https://github.com/jjenzz/sweepit/pull/5) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.3 (Mon Feb 23 2026)
 
 #### 🚀 Enhancement
