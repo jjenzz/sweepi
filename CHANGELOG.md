@@ -1,3 +1,16 @@
+# v0.0.5 (Thu Feb 26 2026)
+
+#### 🚀 Enhancement
+
+- rename cli to sweepi [#7](https://github.com/jjenzz/sweepit/pull/7) ([@jjenzz](https://github.com/jjenzz))
+- add sweepit cli for running sweepit guardrails against a target project [#6](https://github.com/jjenzz/sweepit/pull/6) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.4 (Thu Feb 26 2026)
 
 #### 🚀 Enhancement
