@@ -39,6 +39,12 @@ interface InitializeToolchainResult {
   installedDependencies: boolean;
 }
 
+interface RunSweepitOptions {
+  homeDirectory?: string;
+  runInstallCommand?: (command: string, args: string[], cwd: string) => Promise<void>;
+  runLintCommand?: (command: string, args: string[], cwd: string) => Promise<number>;
+}
+
 async function initializeToolchain(
   options: InitializeToolchainOptions = {},
 ): Promise<InitializeToolchainResult> {
@@ -72,6 +78,37 @@ async function initializeToolchain(
     toolchainDirectory,
     installedDependencies: installRequired,
   };
+}
+
+async function runSweepit(
+  projectDirectory: string,
+  options: RunSweepitOptions = {},
+): Promise<number> {
+  const resolvedProjectDirectory = path.resolve(projectDirectory);
+  const projectDirectoryStats = await fs.stat(resolvedProjectDirectory).catch(() => null);
+
+  if (projectDirectoryStats === null || !projectDirectoryStats.isDirectory()) {
+    throw new Error(`Project directory does not exist: ${resolvedProjectDirectory}`);
+  }
+
+  const initialization = await initializeToolchain({
+    homeDirectory: options.homeDirectory,
+    runInstallCommand: options.runInstallCommand,
+  });
+  const eslintBinaryPath = path.join(
+    initialization.toolchainDirectory,
+    'node_modules',
+    '.bin',
+    'eslint',
+  );
+  const configPath = path.join(initialization.toolchainDirectory, TOOLCHAIN_CONFIG_NAME);
+  const runLintCommand = options.runLintCommand ?? runLintCommandWithExecutable;
+
+  return runLintCommand(
+    eslintBinaryPath,
+    ['--config', configPath, resolvedProjectDirectory],
+    resolvedProjectDirectory,
+  );
 }
 
 async function ensureFile(filePath: string, content: string): Promise<void> {
@@ -118,5 +155,27 @@ async function runInstallCommandWithNpm(
   });
 }
 
-export { initializeToolchain };
-export type { InitializeToolchainOptions, InitializeToolchainResult };
+async function runLintCommandWithExecutable(
+  command: string,
+  args: string[],
+  cwd: string,
+): Promise<number> {
+  return new Promise<number>((resolve, reject) => {
+    const child = childProcess.spawn(command, args, {
+      cwd,
+      stdio: 'inherit',
+      env: process.env,
+    });
+
+    child.on('error', (error) => {
+      reject(error);
+    });
+
+    child.on('exit', (code) => {
+      resolve(code ?? 1);
+    });
+  });
+}
+
+export { initializeToolchain, runSweepit };
+export type { InitializeToolchainOptions, InitializeToolchainResult, RunSweepitOptions };
