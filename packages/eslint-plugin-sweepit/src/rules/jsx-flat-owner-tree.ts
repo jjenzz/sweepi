@@ -147,7 +147,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       deepParentTree:
-        "Component '{{component}}' is in a {{depth}}-deep self-closing handoff chain (allowed: {{allowedDepth}}): {{chain}}. Start flattening at '{{nextHandoff}}' by inlining/compounding intermediate relays. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-flat-owner-tree.md.",
+        "Component '{{component}}' is in a {{depth}}-deep self-closing handoff chain (allowed {{allowedDepth}}): {{chain}}. Flatten at '{{nextHandoff}}'.",
     },
     schema: [
       {

@@ -38,7 +38,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noSetPrefixUtil:
-        "Util/helper function '{{name}}' should not use set* prefix. Reserve set* for React useState setters. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-set-prefix-utils.md.",
+        "Util/helper function '{{name}}' should not use set*. Reserve set* for React useState setters.",
     },
     schema: [],
   },

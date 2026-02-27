@@ -68,7 +68,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noElementProps:
-        "Prop '{{prop}}' has an element type (ReactNode/ReactElement). Use compound composition instead: expose parts and compose via 'children' (for example <Card><Card.Header /></Card>) rather than passing '{{prop}}' as an element prop. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-element-props.md.",
+        "Prop '{{prop}}' has an element type. Use compound composition via children or parts instead.",
     },
     schema: [],
   },

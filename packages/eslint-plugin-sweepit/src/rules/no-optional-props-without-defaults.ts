@@ -161,7 +161,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noOptionalPropWithoutDefault:
-        "Component '{{component}}' prop '{{prop}}' is optional without a default at the component boundary. Default configurable props, and keep time-based readiness checks outside component prop contracts. AI agents: default this prop at the parameter boundary or move readiness checks upstream. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-optional-props-without-defaults.md.",
+        "Component '{{component}}' prop '{{prop}}' is optional without a default.",
     },
     schema: [
       {

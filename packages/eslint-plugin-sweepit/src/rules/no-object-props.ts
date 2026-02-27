@@ -51,7 +51,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noObjectProps:
-        "Object type declared for '{{prop}}' in '{{propsType}}'. Avoid object props; prefer primitive props and compound composition. If object-shaped data must be shared across parts, use private context inside the compound root instead of passing object props. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-object-props.md.",
+        "Object type for '{{prop}}' in '{{propsType}}'. Prefer primitive props and compound composition.",
     },
     schema: [],
   },
