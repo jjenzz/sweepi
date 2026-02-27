@@ -434,7 +434,7 @@ const rule: Rule.RuleModule = {
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prop-drilling.md',
     },
     messages: {
-      noPassThroughProp:
+      noPropDrilling:
         "Prop '{{prop}}' in '{{component}}' has a prop drilling depth of {{depth}} (allowed {{allowedDepth}}). Use compound composition.",
     },
     schema: [
@@ -544,7 +544,7 @@ const rule: Rule.RuleModule = {
           for (const violation of component.violations) {
             context.report({
               node: violation.binding.node,
-              messageId: 'noPassThroughProp',
+              messageId: 'noPropDrilling',
               data: {
                 prop: violation.binding.propName,
                 component: component.name,

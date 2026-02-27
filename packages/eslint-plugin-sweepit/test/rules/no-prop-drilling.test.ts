@@ -78,7 +78,7 @@ describe('no-prop-drilling', () => {
         options: [{ allowedDepth: 1, ignorePropsSpread: false }],
         errors: [
           {
-            messageId: 'noPassThroughProp',
+            messageId: 'noPropDrilling',
             data: {
               prop: '...props',
               component: 'Input',
@@ -104,7 +104,7 @@ describe('no-prop-drilling', () => {
         options: [{ allowedDepth: 1 }],
         errors: [
           {
-            messageId: 'noPassThroughProp',
+            messageId: 'noPropDrilling',
             data: {
               prop: 'title',
               component: 'Top',
@@ -128,7 +128,7 @@ describe('no-prop-drilling', () => {
         options: [{ allowedDepth: 2, ignorePropsSpread: false }],
         errors: [
           {
-            messageId: 'noPassThroughProp',
+            messageId: 'noPropDrilling',
             data: {
               prop: '...props',
               component: 'LevelThree',
