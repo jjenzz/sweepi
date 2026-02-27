@@ -1,3 +1,15 @@
+# v0.0.15 (Fri Feb 27 2026)
+
+#### 📝 Documentation
+
+- Improve no object/array docs [#31](https://github.com/jjenzz/sweepi/pull/31) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.14 (Fri Feb 27 2026)
 
 #### 🚀 Enhancement
