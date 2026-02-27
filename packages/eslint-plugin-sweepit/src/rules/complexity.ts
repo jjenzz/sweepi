@@ -136,6 +136,26 @@ function getReportName(origin: Rule.CodePath['origin'], node: Rule.Node): string
   return getFunctionNameWithKind(node);
 }
 
+function reportComplexity(
+  context: Rule.RuleContext,
+  node: Rule.Node,
+  loc: Rule.Node['loc'],
+  name: string,
+  complexity: number,
+  max: number,
+): void {
+  const reportDescriptor = {
+    node,
+    messageId: 'complex',
+    data: {
+      name: upperCaseFirst(name),
+      complexity,
+      max,
+    },
+  };
+  context.report(loc ? { ...reportDescriptor, loc } : reportDescriptor);
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
@@ -237,16 +257,7 @@ const rule: Rule.RuleModule = {
 
         const name = getReportName(origin, node);
         const loc = getFunctionLoc(node);
-        context.report({
-          node,
-          loc,
-          messageId: 'complex',
-          data: {
-            name: upperCaseFirst(name),
-            complexity,
-            max: parsedOptions.threshold,
-          },
-        });
+        reportComplexity(context, node, loc, name, complexity, parsedOptions.threshold);
       },
     };
   },
