@@ -23,8 +23,9 @@ import jsxBemCompoundNaming from './rules/jsx-bem-compound-naming';
 import jsxCompoundPartExportNaming from './rules/jsx-compound-part-export-naming';
 import noPropDrilling from './rules/no-prop-drilling';
 import jsxFlatOwnerTree from './rules/jsx-flat-owner-tree';
+import complexity from './rules/complexity';
 
-const plugin: ESLint.Plugin = {
+const pluginBase: ESLint.Plugin = {
   meta: {
     name: 'eslint-plugin-sweepit',
     version: '0.0.0',
@@ -52,13 +53,16 @@ const plugin: ESLint.Plugin = {
     'jsx-compound-part-export-naming': jsxCompoundPartExportNaming,
     'no-prop-drilling': noPropDrilling,
     'jsx-flat-owner-tree': jsxFlatOwnerTree,
+    complexity,
   },
-  configs: {},
 };
 
-plugin.configs = {
-  core: createCoreConfig(plugin),
-  react: createReactConfig(plugin),
+const plugin: ESLint.Plugin = {
+  ...pluginBase,
+  configs: {
+    core: createCoreConfig(pluginBase),
+    react: createReactConfig(pluginBase),
+  },
 };
 
 export default plugin;
