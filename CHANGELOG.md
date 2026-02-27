@@ -1,3 +1,15 @@
+# v0.0.9 (Fri Feb 27 2026)
+
+#### 🚀 Enhancement
+
+- Install Sweepi skill during init [#15](https://github.com/jjenzz/sweepi/pull/15) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.8 (Fri Feb 27 2026)
 
 #### 🚀 Enhancement
