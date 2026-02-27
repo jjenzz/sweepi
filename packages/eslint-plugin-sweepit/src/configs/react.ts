@@ -41,7 +41,6 @@ function createReactConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       'react/jsx-no-useless-fragment': 'error',
       'react/jsx-pascal-case': 'error',
       'react/no-unstable-nested-components': 'error',
-      '@typescript-eslint/no-floating-promises': 'error',
       'sweepit/no-title-case-props': 'error',
       'sweepit/no-custom-kebab-case-props': 'error',
       'sweepit/no-set-prefix-utils': 'error',
