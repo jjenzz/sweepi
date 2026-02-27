@@ -1,3 +1,20 @@
+# v0.0.14 (Fri Feb 27 2026)
+
+#### 🚀 Enhancement
+
+- Recommend raw docs in skill [#30](https://github.com/jjenzz/sweepi/pull/30) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🐛 Bug Fix
+
+- Clarify no-boolean-capability-props fix guidance [#29](https://github.com/jjenzz/sweepi/pull/29) ([@jjenzz](https://github.com/jjenzz))
+- Fix runtime object export detection for compound blocks [#28](https://github.com/jjenzz/sweepi/pull/28) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.13 (Fri Feb 27 2026)
 
 #### 🐛 Bug Fix
