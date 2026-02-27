@@ -44,6 +44,6 @@ describe('plugin:sweepit/core', () => {
     expect(coreConfig.rules?.['no-param-reassign']).toEqual(['error', { props: true }]);
     expect(coreConfig.rules?.['prefer-const']).toBe('error');
     expect(coreConfig.rules?.['@typescript-eslint/switch-exhaustiveness-check']).toBe('error');
-    expect(coreConfig.rules?.complexity).toEqual(['error', { max: 3, variant: 'modified' }]);
+    expect(coreConfig.rules?.complexity).toEqual(['error', { max: 5, variant: 'modified' }]);
   });
 });
