@@ -1,31 +1,43 @@
-# Disallow pass-through-only props (`no-pass-through-props`)
+# Disallow prop drilling (`no-prop-drilling`)
 
 Do not accept props in owner components if they are only forwarded unchanged to child props.
 
 ## Why
 
-Pass-through-only props hide ownership boundaries. They make parent components look responsible for values they never own or transform.
+Prop drilling hides ownership boundaries. It makes parent components look responsible for values they never own or transform.
 
 ## Rule Details
 
 - **Target**: PascalCase React component functions with destructured props.
-- **Reported**: Props that are only used as direct JSX prop forwards.
+- **Reported**: Props that are only used as direct JSX prop forwards when chain depth exceeds `allowedDepth`.
 - **Allowed**:
   - Props that are transformed, derived, or used in local logic.
   - `children` composition.
 
 ## Options
 
-This rule has no options.
+```ts
+type NoPropDrillingOptions = {
+  allowedDepth?: number; // default: 1
+  ignorePropsSpread?: boolean; // default: true
+};
+```
+
+- `allowedDepth`: Maximum allowed pass-through chain depth before reporting.
+- Default `1` allows one explicit prop-drilling layer.
+- Depth `2+` becomes a composition-pressure signal and is reported.
+- `ignorePropsSpread`: Ignore `...props` pass-through analysis. This defaults to `true`.
 
 ## Examples
 
 ### Incorrect
 
 ```tsx
-function Card({ title }: { title: string }) {
-  return <Heading title={title} />;
-}
+const Heading = ({ title }: { title: string }) => <h2>{title}</h2>;
+
+const Title = ({ title }: { title: string }) => <Heading title={title} />;
+
+const Card = ({ title }: { title: string }) => <Title title={title} />;
 ```
 
 ### Correct
@@ -35,6 +47,10 @@ function Card({ title }: { title: string }) {
   const headingText = title.toUpperCase();
   return <Heading title={headingText} />;
 }
+
+const Input: React.FC<InputProps> = ({ type = 'text', ...props }) => (
+  <input type={type} {...props} />
+);
 
 function Dialog({ children }: { children: React.ReactNode }) {
   return <DialogRoot>{children}</DialogRoot>;
