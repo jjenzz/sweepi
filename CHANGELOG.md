@@ -1,3 +1,16 @@
+# v0.0.7 (Fri Feb 27 2026)
+
+#### 🚀 Enhancement
+
+- sweep changed files only by default (use --all for all) [#9](https://github.com/jjenzz/sweepi/pull/9) ([@jjenzz](https://github.com/jjenzz))
+- remove over eager core rules [#10](https://github.com/jjenzz/sweepi/pull/10) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.6 (Fri Feb 27 2026)
 
 #### 🚀 Enhancement
