@@ -16,15 +16,26 @@ Pass-through-only props hide ownership boundaries. They make parent components l
 
 ## Options
 
-This rule has no options.
+```ts
+type NoPassThroughPropsOptions = {
+  allowedDepth?: number; // default: 1
+};
+```
+
+- `allowedDepth`: Maximum allowed pass-through chain depth before reporting.
+- Default `1` allows one wrapper pass-through (for example, a thin input wrapper over `<input />`).
+- Depth `2+` becomes a composition-pressure signal and is reported.
 
 ## Examples
 
 ### Incorrect
 
 ```tsx
-function Card({ title }: { title: string }) {
-  return <Heading title={title} />;
+const NativeInput = ({ ...props }: InputProps) => <input {...props} />;
+
+const Input = ({ ...props }: InputProps) => <NativeInput {...props} />;
+
+const FormField = ({ ...props }: InputProps) => <Input {...props} />;
 }
 ```
 
@@ -35,6 +46,10 @@ function Card({ title }: { title: string }) {
   const headingText = title.toUpperCase();
   return <Heading title={headingText} />;
 }
+
+const Input: React.FC<InputProps> = ({ type = 'text', ...props }) => (
+  <input type={type} {...props} />
+);
 
 function Dialog({ children }: { children: React.ReactNode }) {
   return <DialogRoot>{children}</DialogRoot>;

@@ -36,38 +36,101 @@ describe('no-pass-through-props', () => {
           return <Value value={next} />;
         };
       `,
+      `
+        const Input: React.FC<InputProps> = ({ type = 'text', ...props }) => (
+          <input
+            type={type}
+            {...props}
+          />
+        );
+      `,
+      `
+        const Leaf = ({ title }: { title: string }) => <h2>{title}</h2>;
+
+        const Card = ({ title }: { title: string }) => {
+          return <Leaf title={title} />;
+        };
+      `,
     ],
     invalid: [
       {
         code: `
-          function Card({ title }: { title: string }) {
-            return <Heading title={title} />;
-          }
-        `,
-        errors: [
-          {
-            messageId: 'noPassThroughProp',
-            data: {
-              prop: 'title',
-              component: 'Card',
-              forwardedTo: 'title',
-            },
-          },
-        ],
-      },
-      {
-        code: `
-          const Panel = ({ subtitle: panelSubtitle }: { subtitle: string }) => {
-            return <Heading subtitle={panelSubtitle} />;
+          const BaseInput = ({ ...props }: InputProps) => {
+            return <input {...props} />;
+          };
+
+          const Input = ({ ...props }: InputProps) => {
+            return <BaseInput {...props} />;
           };
         `,
         errors: [
           {
             messageId: 'noPassThroughProp',
             data: {
-              prop: 'subtitle',
-              component: 'Panel',
-              forwardedTo: 'subtitle',
+              prop: '...props',
+              component: 'Input',
+              forwardedTo: 'props spread',
+              depth: '2',
+              allowedDepth: '1',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          const Leaf = ({ title }: { title: string }) => <h2>{title}</h2>;
+
+          const Middle = ({ title }: { title: string }) => {
+            return <Leaf title={title} />;
+          };
+
+          const Top = ({ title }: { title: string }) => {
+            return <Middle title={title} />;
+          };
+        `,
+        errors: [
+          {
+            messageId: 'noPassThroughProp',
+            data: {
+              prop: 'title',
+              component: 'Top',
+              forwardedTo: 'title',
+              depth: '2',
+              allowedDepth: '1',
+            },
+          },
+        ],
+      },
+      {
+        code: `
+          const Native = ({ ...props }: InputProps) => <input {...props} />;
+
+          const LevelOne = ({ ...props }: InputProps) => <Native {...props} />;
+
+          const LevelTwo = ({ ...props }: InputProps) => <LevelOne {...props} />;
+
+          const LevelThree = ({ ...props }: InputProps) => <LevelTwo {...props} />;
+        `,
+        options: [{ allowedDepth: 2 }],
+        errors: [
+          {
+            messageId: 'noPassThroughProp',
+            data: {
+              prop: '...props',
+              component: 'LevelThree',
+              forwardedTo: 'props spread',
+              depth: '4',
+              allowedDepth: '2',
+            },
+          },
+          {
+            messageId: 'noPassThroughProp',
+            data: {
+              prop: '...props',
+              component: 'LevelTwo',
+              forwardedTo: 'props spread',
+              depth: '3',
+              allowedDepth: '2',
             },
           },
         ],

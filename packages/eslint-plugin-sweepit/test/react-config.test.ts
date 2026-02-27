@@ -77,7 +77,12 @@ describe('plugin:sweepit/react', () => {
     expect(reactConfig.rules?.['sweepit/max-custom-props']).toBe('error');
     expect(reactConfig.rules?.['sweepit/jsx-bem-compound-naming']).toBe('error');
     expect(reactConfig.rules?.['sweepit/jsx-compound-part-export-naming']).toBe('error');
-    expect(reactConfig.rules?.['sweepit/no-pass-through-props']).toBe('error');
+    expect(reactConfig.rules?.['sweepit/no-pass-through-props']).toEqual([
+      'error',
+      {
+        allowedDepth: 1,
+      },
+    ]);
     expect(reactConfig.rules?.['sweepit/jsx-flat-owner-tree']).toBe('error');
   });
 });

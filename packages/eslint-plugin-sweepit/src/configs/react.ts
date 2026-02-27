@@ -73,7 +73,12 @@ function createReactConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       'sweepit/max-custom-props': 'error',
       'sweepit/jsx-bem-compound-naming': 'error',
       'sweepit/jsx-compound-part-export-naming': 'error',
-      'sweepit/no-pass-through-props': 'error',
+      'sweepit/no-pass-through-props': [
+        'error',
+        {
+          allowedDepth: 1,
+        },
+      ],
       'sweepit/jsx-flat-owner-tree': 'error',
     },
   };

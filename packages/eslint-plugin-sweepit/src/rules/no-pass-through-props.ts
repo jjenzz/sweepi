@@ -1,13 +1,43 @@
 import type { Rule } from 'eslint';
 
+const DEFAULT_ALLOWED_DEPTH = 1;
+
 interface PropBinding {
   propName: string;
   localName: string;
   node: Rule.Node;
 }
 
+interface RuleOptions {
+  allowedDepth?: number;
+}
+
 interface ParentRef {
   parent: Rule.Node | null;
+}
+
+interface PropUsage {
+  seen: boolean;
+  owned: boolean;
+  forwardedTo: Set<string>;
+  forwardedComponents: Set<string>;
+}
+
+interface PropViolation {
+  binding: PropBinding;
+  forwardedTo: Set<string>;
+}
+
+interface ComponentPassThroughRecord {
+  name: string;
+  node: Rule.Node;
+  passThroughChildren: Set<string>;
+  violations: PropViolation[];
+}
+
+interface ForwardedUsageInfo {
+  forwardedTo: string;
+  forwardedComponent: string | null;
 }
 
 function isPascalCase(name: string): boolean {
@@ -56,6 +86,25 @@ function getIdentifierFromPattern(pattern: Rule.Node | null | undefined): Rule.N
   return null;
 }
 
+function getCustomJsxName(node: Rule.Node | null | undefined): string | null {
+  if (!node) return null;
+  const typedNode = node as unknown as { type?: string; name?: string; object?: Rule.Node };
+
+  if (typedNode.type === 'JSXIdentifier' && typedNode.name) {
+    return isPascalCase(typedNode.name) ? typedNode.name : null;
+  }
+
+  if (typedNode.type === 'JSXMemberExpression' && typedNode.object) {
+    const member = typedNode as unknown as { object: Rule.Node };
+    const objectNode = member.object as unknown as { type?: string; name?: string };
+    if (objectNode.type === 'JSXIdentifier' && objectNode.name) {
+      return isPascalCase(objectNode.name) ? objectNode.name : null;
+    }
+  }
+
+  return null;
+}
+
 function getStaticPropKey(property: Rule.Node): string | null {
   if (property.type !== 'Property') return null;
   const prop = property as unknown as {
@@ -80,6 +129,18 @@ function getPropBindings(param: Rule.Node | null | undefined): PropBinding[] {
   const objectPattern = param as unknown as { properties?: Rule.Node[] };
   const bindings: PropBinding[] = [];
   for (const property of objectPattern.properties ?? []) {
+    if (property.type === 'RestElement') {
+      const rest = property as unknown as { argument?: Rule.Node };
+      if (rest.argument?.type !== 'Identifier') continue;
+      const identifier = rest.argument as unknown as { name: string };
+      bindings.push({
+        propName: `...${identifier.name}`,
+        localName: identifier.name,
+        node: rest.argument,
+      });
+      continue;
+    }
+
     if (property.type !== 'Property') continue;
     const prop = property as unknown as { key?: Rule.Node; value?: Rule.Node };
     if (!prop.value) continue;
@@ -135,6 +196,16 @@ function isDefinitionLikeIdentifier(
     if ((arrow.params ?? []).includes(node)) return true;
   }
 
+  if (parent.type === 'RestElement') {
+    const restElement = parent as unknown as { argument?: Rule.Node };
+    if (restElement.argument === node) return true;
+  }
+
+  if (parent.type === 'AssignmentPattern') {
+    const assignmentPattern = parent as unknown as { left?: Rule.Node };
+    if (assignmentPattern.left === node) return true;
+  }
+
   return false;
 }
 
@@ -173,35 +244,101 @@ function getForwardedTargetProp(
   return grandParent.name.name ?? null;
 }
 
-function checkComponent(
-  context: Rule.RuleContext,
+function getDirectJsxSpreadInfo(
+  node: Rule.Node,
+  parent: Rule.Node | null,
+  parentMap: WeakMap<object, ParentRef>,
+): ForwardedUsageInfo | null {
+  if (!parent || parent.type !== 'JSXSpreadAttribute') return null;
+  const spread = parent as unknown as { argument?: Rule.Node };
+  if (spread.argument !== node) return null;
+
+  const openingRef = parentMap.get(parent as unknown as object);
+  const openingElement = openingRef?.parent as
+    | {
+        type?: string;
+        name?: Rule.Node;
+      }
+    | undefined;
+  if (!openingElement || openingElement.type !== 'JSXOpeningElement') return null;
+
+  return {
+    forwardedTo: 'props spread',
+    forwardedComponent: getCustomJsxName(openingElement.name),
+  };
+}
+
+function getDirectJsxAttributeInfo(
+  node: Rule.Node,
+  parent: Rule.Node | null,
+  parentMap: WeakMap<object, ParentRef>,
+): ForwardedUsageInfo | null {
+  const forwardedTarget = getForwardedTargetProp(node, parent, parentMap);
+  if (!forwardedTarget) return null;
+  if (!parent) return null;
+
+  const attributeRef = parentMap.get(parent as unknown as object);
+  const attribute = attributeRef?.parent as
+    | {
+        type?: string;
+      }
+    | undefined;
+  if (!attribute || attribute.type !== 'JSXAttribute') return null;
+
+  const openingRef = parentMap.get(attribute as unknown as object);
+  const openingElement = openingRef?.parent as
+    | {
+        type?: string;
+        name?: Rule.Node;
+      }
+    | undefined;
+
+  return {
+    forwardedTo: forwardedTarget,
+    forwardedComponent:
+      openingElement && openingElement.type === 'JSXOpeningElement'
+        ? getCustomJsxName(openingElement.name)
+        : null,
+  };
+}
+
+function getDirectForwardedUsageInfo(
+  node: Rule.Node,
+  parent: Rule.Node | null,
+  parentMap: WeakMap<object, ParentRef>,
+): ForwardedUsageInfo | null {
+  return (
+    getDirectJsxAttributeInfo(node, parent, parentMap) ??
+    getDirectJsxSpreadInfo(node, parent, parentMap)
+  );
+}
+
+function analyzeComponent(
   functionNode: Rule.Node,
   name: string | null | undefined,
   params: Rule.Node[] | undefined,
   body: Rule.Node | null | undefined,
-): void {
-  if (!name || !isPascalCase(name)) return;
+): ComponentPassThroughRecord | null {
+  if (!name || !isPascalCase(name)) return null;
   const firstParam = (params ?? [])[0];
   const bindings = getPropBindings(firstParam);
-  if (bindings.length === 0) return;
+  if (bindings.length === 0) return null;
 
   const bindingMap = new Map<string, PropBinding>();
   for (const binding of bindings) {
     if (binding.propName === 'children') continue;
     bindingMap.set(binding.localName, binding);
   }
-  if (bindingMap.size === 0) return;
+  if (bindingMap.size === 0) return null;
 
-  const usageMap = new Map<
-    string,
-    {
-      seen: boolean;
-      owned: boolean;
-      forwardedTo: Set<string>;
-    }
-  >();
+  const usageMap = new Map<string, PropUsage>();
   for (const localName of bindingMap.keys()) {
-    usageMap.set(localName, { seen: false, owned: false, forwardedTo: new Set<string>() });
+    usageMap.set(localName, {
+      seen: false,
+      owned: false,
+      forwardedTo: new Set<string>(),
+      forwardedComponents: new Set<string>(),
+    });
   }
 
   const parentMap = new WeakMap<object, ParentRef>();
@@ -215,32 +352,71 @@ function checkComponent(
     if (isDefinitionLikeIdentifier(node, parent, identifier.name)) return;
 
     usage.seen = true;
-    const forwardedTarget = getForwardedTargetProp(node, parent, parentMap);
-    if (!forwardedTarget) {
+    const forwardedUsageInfo = getDirectForwardedUsageInfo(node, parent, parentMap);
+    if (!forwardedUsageInfo) {
       usage.owned = true;
       return;
     }
-    usage.forwardedTo.add(forwardedTarget);
+    usage.forwardedTo.add(forwardedUsageInfo.forwardedTo);
+    if (forwardedUsageInfo.forwardedComponent) {
+      usage.forwardedComponents.add(forwardedUsageInfo.forwardedComponent);
+    }
   });
 
+  const violations: PropViolation[] = [];
+  const passThroughChildren = new Set<string>();
   for (const [localName, usage] of usageMap.entries()) {
     if (!usage.seen || usage.owned) continue;
     const binding = bindingMap.get(localName);
     if (!binding) continue;
-
-    context.report({
-      node: binding.node,
-      messageId: 'noPassThroughProp',
-      data: {
-        prop: binding.propName,
-        component: name,
-        forwardedTo:
-          usage.forwardedTo.size > 0
-            ? Array.from(usage.forwardedTo).sort().join(', ')
-            : 'child prop',
-      },
+    violations.push({
+      binding,
+      forwardedTo: usage.forwardedTo,
     });
+    for (const childName of usage.forwardedComponents) {
+      passThroughChildren.add(childName);
+    }
   }
+
+  if (violations.length === 0) return null;
+
+  return {
+    name,
+    node: functionNode,
+    passThroughChildren,
+    violations,
+  };
+}
+
+function computePassThroughDepth(
+  componentName: string,
+  components: Map<string, ComponentPassThroughRecord>,
+  memo: Map<string, number>,
+  visiting: Set<string>,
+): number {
+  const cached = memo.get(componentName);
+  if (cached != null) return cached;
+  if (visiting.has(componentName)) return 1;
+  visiting.add(componentName);
+
+  const component = components.get(componentName);
+  if (!component) {
+    memo.set(componentName, 1);
+    visiting.delete(componentName);
+    return 1;
+  }
+
+  let childMaxDepth = 0;
+  for (const childName of component.passThroughChildren) {
+    if (!components.has(childName)) continue;
+    const childDepth = computePassThroughDepth(childName, components, memo, visiting);
+    if (childDepth > childMaxDepth) childMaxDepth = childDepth;
+  }
+
+  const depth = 1 + childMaxDepth;
+  memo.set(componentName, depth);
+  visiting.delete(componentName);
+  return depth;
 }
 
 const rule: Rule.RuleModule = {
@@ -253,11 +429,31 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noPassThroughProp:
-        "Prop '{{prop}}' in '{{component}}' is only forwarded to '{{forwardedTo}}'. Remove it or compose via children.",
+        "Prop '{{prop}}' in '{{component}}' is only forwarded to '{{forwardedTo}}' (pass-through depth {{depth}}, allowed {{allowedDepth}}). Remove it or compose via children.",
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          allowedDepth: {
+            type: 'integer',
+            minimum: 1,
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
   },
   create(context) {
+    const rawOptions = (context.options[0] as RuleOptions | undefined) ?? {};
+    const allowedDepthRaw = rawOptions.allowedDepth;
+    const allowedDepth =
+      Number.isInteger(allowedDepthRaw) && (allowedDepthRaw ?? 0) >= 1
+        ? (allowedDepthRaw as number)
+        : DEFAULT_ALLOWED_DEPTH;
+
+    const components = new Map<string, ComponentPassThroughRecord>();
+
     return {
       FunctionDeclaration(node: Rule.Node) {
         const fn = node as unknown as {
@@ -265,7 +461,9 @@ const rule: Rule.RuleModule = {
           params?: Rule.Node[];
           body?: Rule.Node;
         };
-        checkComponent(context, node, fn.id?.name, fn.params, fn.body);
+        const component = analyzeComponent(node, fn.id?.name, fn.params, fn.body);
+        if (!component) return;
+        components.set(component.name, component);
       },
       VariableDeclarator(node: Rule.Node) {
         const declaration = node as unknown as {
@@ -283,7 +481,33 @@ const rule: Rule.RuleModule = {
           params?: Rule.Node[];
           body?: Rule.Node;
         };
-        checkComponent(context, init, id.name, component.params, component.body);
+        const record = analyzeComponent(init, id.name, component.params, component.body);
+        if (!record) return;
+        components.set(record.name, record);
+      },
+      'Program:exit'() {
+        const memo = new Map<string, number>();
+        for (const component of components.values()) {
+          const depth = computePassThroughDepth(component.name, components, memo, new Set<string>());
+          if (depth <= allowedDepth) continue;
+
+          for (const violation of component.violations) {
+            context.report({
+              node: violation.binding.node,
+              messageId: 'noPassThroughProp',
+              data: {
+                prop: violation.binding.propName,
+                component: component.name,
+                forwardedTo:
+                  violation.forwardedTo.size > 0
+                    ? Array.from(violation.forwardedTo).sort().join(', ')
+                    : 'child prop',
+                depth: String(depth),
+                allowedDepth: String(allowedDepth),
+              },
+            });
+          }
+        }
       },
     };
   },
