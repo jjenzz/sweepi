@@ -22,6 +22,7 @@ function createCoreConfig(_sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       },
     },
     rules: {
+      'sonarjs/prefer-read-only-props': 'off',
       'functional/immutable-data': 'error',
       'no-param-reassign': ['error', { props: true }],
       'prefer-const': 'error',
