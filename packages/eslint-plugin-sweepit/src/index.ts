@@ -1,4 +1,4 @@
-import type { ESLint, Linter } from 'eslint';
+import type { ESLint } from 'eslint';
 import { createCoreConfig } from './configs/core';
 import { createReactConfig } from './configs/react';
 import noTitleCaseProps from './rules/no-title-case-props';
@@ -25,7 +25,12 @@ import noPropDrilling from './rules/no-prop-drilling';
 import jsxFlatOwnerTree from './rules/jsx-flat-owner-tree';
 import complexity from './rules/complexity';
 
-const rules: NonNullable<ESLint.Plugin['rules']> = {
+const pluginBase: ESLint.Plugin = {
+  meta: {
+    name: 'eslint-plugin-sweepit',
+    version: '0.0.0',
+  },
+  rules: {
     'no-title-case-props': noTitleCaseProps,
     'no-custom-kebab-case-props': noCustomKebabCaseProps,
     'no-set-prefix-utils': noSetPrefixUtils,
@@ -49,39 +54,16 @@ const rules: NonNullable<ESLint.Plugin['rules']> = {
     'no-prop-drilling': noPropDrilling,
     'jsx-flat-owner-tree': jsxFlatOwnerTree,
     complexity,
-};
-
-function createPlugin(): ESLint.Plugin {
-  const basePlugin: ESLint.Plugin = {
-    meta: {
-      name: 'eslint-plugin-sweepit',
-      version: '0.0.0',
-    },
-    rules,
-    configs: {},
-  };
-
-  const configs: Record<string, Linter.Config[]> = {
-    core: createCoreConfig(basePlugin),
-    react: createReactConfig(basePlugin),
-  };
-
-  return {
-    meta: basePlugin.meta,
-    rules,
-    configs,
-  };
-}
-
-const plugin = createPlugin();
-
-const pluginWithConfigs = {
-  ...plugin,
-  configs: {
-    core: plugin.configs?.core ?? [],
-    react: plugin.configs?.react ?? [],
   },
 };
 
-export default pluginWithConfigs;
+const plugin: ESLint.Plugin = {
+  ...pluginBase,
+  configs: {
+    core: createCoreConfig(pluginBase),
+    react: createReactConfig(pluginBase),
+  },
+};
+
+export default plugin;
 export { plugin };
