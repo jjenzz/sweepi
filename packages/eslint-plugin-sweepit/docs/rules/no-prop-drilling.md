@@ -35,7 +35,9 @@ type NoPropDrillingOptions = {
 ```tsx
 const Heading = ({ title }: { title: string }) => <h2>{title}</h2>;
 
-const Card = ({ title }: { title: string }) => <Heading title={title} />;
+const Title = ({ title }: { title: string }) => <Heading title={title} />;
+
+const Card = ({ title }: { title: string }) => <Title title={title} />;
 ```
 
 ### Correct
