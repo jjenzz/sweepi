@@ -255,7 +255,9 @@ function getDirectJsxSpreadInfo(
   parent: Rule.Node | null,
   parentMap: WeakMap<object, ParentRef>,
 ): ForwardedUsageInfo | null {
-  if (!parent || parent.type !== 'JSXSpreadAttribute') return null;
+  if (!parent) return null;
+  const typedParent = parent as unknown as { type?: string };
+  if (typedParent.type !== 'JSXSpreadAttribute') return null;
   const spread = parent as unknown as { argument?: Rule.Node };
   if (spread.argument !== node) return null;
 
