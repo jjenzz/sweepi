@@ -8,7 +8,7 @@ describe('plugin:sweepit/core', () => {
     expect(Array.isArray(plugin.configs?.core)).toBe(true);
   });
 
-  it('enables sonarjs recommended and core baseline rules', () => {
+  it('enables core baseline rules', () => {
     const coreConfigList = plugin.configs?.core as Array<{
       plugins?: Record<string, unknown>;
       languageOptions?: {
@@ -21,18 +21,14 @@ describe('plugin:sweepit/core', () => {
       rules?: Record<string, unknown>;
     }>;
 
-    const sonarConfig = coreConfigList[0];
-    const coreConfig = coreConfigList[1];
+    const coreConfig = coreConfigList[0];
 
-    expect(coreConfigList.length).toBeGreaterThanOrEqual(2);
-    expect(sonarConfig.plugins?.sonarjs).toBeDefined();
-    expect(sonarConfig.rules).toBeDefined();
+    expect(coreConfigList.length).toBeGreaterThanOrEqual(1);
     expect(coreConfig.plugins?.functional).toBeDefined();
     expect(coreConfig.plugins?.['@typescript-eslint']).toBeDefined();
     expect(coreConfig.languageOptions?.parser).toBeDefined();
     expect(coreConfig.languageOptions?.parserOptions?.projectService).toBe(true);
     expect(coreConfig.languageOptions?.parserOptions?.tsconfigRootDir).toBe(process.cwd());
-    expect(coreConfig.rules?.['sonarjs/prefer-read-only-props']).toBe('off');
     expect(coreConfig.rules?.['functional/immutable-data']).toEqual([
       'error',
       {

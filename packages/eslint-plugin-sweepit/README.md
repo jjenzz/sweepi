@@ -41,15 +41,11 @@ This improves accuracy for rules like:
 
 The exported core config enables:
 
-- `sonarjs.configs.recommended` from `eslint-plugin-sonarjs`
-- `functional/functional-parameters`
 - `functional/immutable-data`
-- `functional/no-let`
-- `functional/no-return-void`
 - `no-param-reassign` with `{ props: true }`
 - `prefer-const`
 - `@typescript-eslint/switch-exhaustiveness-check`
-- `complexity` with `{ max: 3, variant: 'modified' }`
+- `sweepit/complexity` with `{ max: 5, variant: 'modified' }`
 
 ## What `configs.react` includes
 
@@ -117,5 +113,5 @@ export default [
 | [`sweepit/max-custom-props`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/max-custom-props.md)                                     | Limits custom prop count in `*Props` contracts (default max `8`) to surface composition pressure early.                                                                    |
 | [`sweepit/jsx-bem-compound-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-bem-compound-naming.md)                       | Enforces block-prefixed naming for exported compound component parts.                                                                                                      |
 | [`sweepit/jsx-compound-part-export-naming`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-compound-part-export-naming.md)       | Enforces `Root`/part alias export naming for compound component modules.                                                                                                   |
-| [`sweepit/no-prop-drilling`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prop-drilling.md)                                   | Disallows props that are only forwarded unchanged to children.                                                                                                             |
+| [`sweepit/no-prop-drilling`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-prop-drilling.md)                                     | Disallows props that are only forwarded unchanged to children.                                                                                                             |
 | [`sweepit/jsx-flat-owner-tree`](https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-flat-owner-tree.md)                               | Encourages flatter parent component ownership trees by limiting deep handoff chains.                                                                                       |

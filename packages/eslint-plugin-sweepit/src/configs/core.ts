@@ -2,11 +2,8 @@ import type { ESLint, Linter } from 'eslint';
 import tsParser from '@typescript-eslint/parser';
 import tsEslintPlugin from '@typescript-eslint/eslint-plugin';
 import functionalPlugin from 'eslint-plugin-functional';
-import sonarjs from 'eslint-plugin-sonarjs';
 
 function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
-  const sonarRecommended = (sonarjs.configs?.recommended ?? {}) as unknown as Linter.Config;
-
   const coreConfig: Linter.Config = {
     plugins: {
       '@typescript-eslint': tsEslintPlugin as unknown as ESLint.Plugin,
@@ -23,7 +20,6 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       },
     },
     rules: {
-      'sonarjs/prefer-read-only-props': 'off',
       'functional/immutable-data': [
         'error',
         {
@@ -40,7 +36,7 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
     },
   };
 
-  return [sonarRecommended, coreConfig];
+  return [coreConfig];
 }
 
 export { createCoreConfig };
