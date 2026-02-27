@@ -47,7 +47,7 @@ describe('plugin:sweepit/core', () => {
     expect(coreConfig.plugins?.sweepit).toBeDefined();
     expect(coreConfig.rules?.['sweepit/complexity']).toEqual([
       'error',
-      { max: 5, variant: 'modified' },
+      { max: 6, variant: 'modified' },
     ]);
   });
 });
