@@ -23,7 +23,7 @@ Run Sweepi in either case:
 2. Parse all reported issues.
 3. Follow the hard-gate pre-edit process in local `AGENTS.md`.
 4. For each rule violation, open the rule docs in:
-   - `https://github.com/jjenzz/sweepi/tree/main/packages/eslint-plugin-sweepit/docs/rules`
+   - `https://raw.githubusercontent.com/jjenzz/sweepi/main/packages/eslint-plugin-sweepit/docs/rules/<rule-id>.md`
 5. Apply fixes that match the documented intent, not only a minimal syntax pass.
 6. Re-run `sweepi` until issues are resolved (or document blockers if resolution is impossible).
 
