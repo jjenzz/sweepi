@@ -123,8 +123,7 @@ const rule: Rule.RuleModule = {
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-hook-jsx.md',
     },
     messages: {
-      noHookJsx:
-        "Function '{{name}}' is named like a hook but returns JSX. Hooks should return data, not render. Use a component instead. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-hook-jsx.md.",
+      noHookJsx: "Function '{{name}}' is named like a hook but returns JSX.",
     },
     schema: [],
   },

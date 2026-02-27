@@ -86,7 +86,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       asyncPropRequiresActionName:
-        "Prop '{{prop}}' expects an async function type ('{{returnType}}'). Async function props must be named 'action' or end with 'Action'. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-server-action-prop-suffix.md.",
+        "Async function prop '{{prop}}' must be named 'action' or end with 'Action'.",
     },
     schema: [],
   },

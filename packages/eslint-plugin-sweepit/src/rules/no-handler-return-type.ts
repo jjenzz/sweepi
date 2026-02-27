@@ -138,7 +138,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noHandlerReturnType:
-        "Handler prop '{{prop}}' expects return type '{{returnType}}'. Handler prop definitions must not expect return values; use void. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-handler-return-type.md.",
+        "Handler prop '{{prop}}' expects return type '{{returnType}}'. Handler props must return void.",
     },
     schema: [],
   },

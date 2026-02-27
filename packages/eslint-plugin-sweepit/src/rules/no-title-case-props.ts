@@ -35,8 +35,7 @@ const rule: Rule.RuleModule = {
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-title-case-props.md',
     },
     messages: {
-      noTitleCase:
-        "Prop '{{prop}}' uses TitleCase. Use camelCase instead (e.g. {{suggestion}}). See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-title-case-props.md.",
+      noTitleCase: "Prop '{{prop}}' uses TitleCase. Use camelCase instead (e.g. {{suggestion}}).",
     },
     schema: [],
   },

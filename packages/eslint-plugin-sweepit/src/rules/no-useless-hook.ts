@@ -120,8 +120,7 @@ const rule: Rule.RuleModule = {
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-useless-hook.md',
     },
     messages: {
-      noUselessHook:
-        "Function '{{name}}' is named like a hook but does not call any React hook. Rename or add hook calls. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-useless-hook.md.",
+      noUselessHook: "Function '{{name}}' is named like a hook but does not call React hooks.",
     },
     schema: [],
   },

@@ -155,9 +155,9 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       mustEndWithVerb:
-        "Handler prop '{{prop}}' should end with a verb (for example 'onValueChange'). If the suffix is a legitimate domain verb, add it to this rule's 'extendVerbs' option. AI agents: update rule options before renaming APIs. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-on-handler-verb-suffix.md.",
+        "Handler prop '{{prop}}' should end with a verb (for example 'onValueChange').",
       preferVerbSuffix:
-        "Prefer '{{suggestion}}' over '{{prop}}' so the handler name ends with a verb. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-on-handler-verb-suffix.md.",
+        "Prefer '{{suggestion}}' over '{{prop}}' so the handler name ends with a verb.",
     },
     schema: [
       {

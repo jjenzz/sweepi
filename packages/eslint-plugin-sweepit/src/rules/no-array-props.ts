@@ -54,7 +54,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       noArrayProps:
-        "Array type declared for '{{prop}}' in '{{propsType}}'. Avoid array props; prefer primitive props and compound composition. If array-shaped data must be shared across parts, use private context inside the compound root instead of passing array props. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-array-props.md.",
+        "Array type for '{{prop}}' in '{{propsType}}'. Prefer primitive props and compound composition.",
     },
     schema: [],
   },

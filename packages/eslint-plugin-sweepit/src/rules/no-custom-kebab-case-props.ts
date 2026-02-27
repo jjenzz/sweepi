@@ -75,8 +75,7 @@ const rule: Rule.RuleModule = {
       url: 'https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-custom-kebab-case-props.md',
     },
     messages: {
-      noCustomKebab:
-        "Custom kebab-case prop '{{prop}}' is not allowed. Rename to camelCase (for example '{{suggestion}}'), or keep kebab-case only for allowed native/custom prefixes. See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/no-custom-kebab-case-props.md.",
+      noCustomKebab: "Custom kebab-case prop '{{prop}}' is not allowed. Use '{{suggestion}}').",
     },
     schema: [
       {

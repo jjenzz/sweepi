@@ -65,7 +65,7 @@ const rule: Rule.RuleModule = {
     },
     messages: {
       exportedPartMustUseBlockPrefix:
-        "Exported component '{{name}}' should be prefixed with compound block '{{block}}' in this file (for example '{{example}}'). See: https://github.com/jjenzz/sweepit/tree/main/packages/eslint-plugin-sweepit/docs/rules/jsx-bem-compound-naming.md.",
+        "Exported component '{{name}}' should be prefixed with compound block '{{block}}' (e.g. '{{example}}').",
     },
     schema: [],
   },
