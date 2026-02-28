@@ -1,3 +1,31 @@
+# v0.0.19 (Sat Feb 28 2026)
+
+#### 🚀 Enhancement
+
+- feat(rules): add no-inline-call-expressions rule [#55](https://github.com/jjenzz/sweepi/pull/55) ([@jjenzz](https://github.com/jjenzz))
+- Increase default core complexity threshold to 10 [#50](https://github.com/jjenzz/sweepi/pull/50) ([@jjenzz](https://github.com/jjenzz))
+- Add no-handle-prefix-utils ESLint rule [#45](https://github.com/jjenzz/sweepi/pull/45) ([@jjenzz](https://github.com/jjenzz))
+- Default no-external-binding-mutation to allow enclosing function bindings [#46](https://github.com/jjenzz/sweepi/pull/46) ([@jjenzz](https://github.com/jjenzz))
+- Update immutable-data core options to ignore classes [#44](https://github.com/jjenzz/sweepi/pull/44) ([@jjenzz](https://github.com/jjenzz))
+- Adopt TypeScript ESLint recommended configs in core [#43](https://github.com/jjenzz/sweepi/pull/43) ([@jjenzz](https://github.com/jjenzz))
+- Replace closure mutation rule with external-binding mutation rule [#42](https://github.com/jjenzz/sweepi/pull/42) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🐛 Bug Fix
+
+- Fix import call false positives in no-external-binding-mutation [#49](https://github.com/jjenzz/sweepi/pull/49) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🏠 Housekeeping
+
+- fix: resolve jsx-on-handler-verb-suffix sweepi findings [#53](https://github.com/jjenzz/sweepi/pull/53) ([@jjenzz](https://github.com/jjenzz))
+- fix jsx-bem-compound-naming lint compliance [#51](https://github.com/jjenzz/sweepi/pull/51) ([@jjenzz](https://github.com/jjenzz))
+- chore(complexity): fix sweepi violations in complexity rule [#47](https://github.com/jjenzz/sweepi/pull/47) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.18 (Sat Feb 28 2026)
 
 #### 🚀 Enhancement
