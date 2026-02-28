@@ -18,6 +18,7 @@ import noArrayProps from './rules/no-array-props';
 import noPrefixedPropBundles from './rules/no-prefixed-prop-bundles';
 import noOptionalPropsWithoutDefaults from './rules/no-optional-props-without-defaults';
 import noBooleanCapabilityProps from './rules/no-boolean-capability-props';
+import noLetClosureMutation from './rules/no-let-closure-mutation';
 import maxCustomProps from './rules/max-custom-props';
 import jsxBemCompoundNaming from './rules/jsx-bem-compound-naming';
 import jsxCompoundPartExportNaming from './rules/jsx-compound-part-export-naming';
@@ -48,6 +49,7 @@ const pluginBase: ESLint.Plugin = {
     'no-prefixed-prop-bundles': noPrefixedPropBundles,
     'no-optional-props-without-defaults': noOptionalPropsWithoutDefaults,
     'no-boolean-capability-props': noBooleanCapabilityProps,
+    'no-let-closure-mutation': noLetClosureMutation,
     'max-custom-props': maxCustomProps,
     'jsx-bem-compound-naming': jsxBemCompoundNaming,
     'jsx-compound-part-export-naming': jsxCompoundPartExportNaming,
