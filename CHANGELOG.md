@@ -1,3 +1,19 @@
+# v0.0.20 (Sat Feb 28 2026)
+
+#### 🚀 Enhancement
+
+- docs(sweepi): add pre-work editor enablement gate [#56](https://github.com/jjenzz/sweepi/pull/56) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🐛 Bug Fix
+
+- fix: avoid no-inline false positives in callback arguments [#57](https://github.com/jjenzz/sweepi/pull/57) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.19 (Sat Feb 28 2026)
 
 #### 🚀 Enhancement
