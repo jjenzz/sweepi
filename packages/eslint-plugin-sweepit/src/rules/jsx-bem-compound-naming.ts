@@ -41,18 +41,28 @@ function getFileStem(filename: string): string | null {
   return base.slice(0, -ext.length);
 }
 
+function getLiteralStringValue(value: unknown): string | null {
+  return typeof value === 'string' ? value : null;
+}
+
 function getExportedIdentifierName(node: Rule.Node | null | undefined): string | null {
   if (!node) return null;
   const typedNode = node as unknown as { type?: string; name?: string; value?: unknown };
-  if (typedNode.type === 'Identifier' && typedNode.name) return typedNode.name;
-  if (typedNode.type === 'Literal' && typeof typedNode.value === 'string') return typedNode.value;
-  return null;
+  if (typedNode.type === 'Identifier') return typedNode.name ?? null;
+  if (typedNode.type !== 'Literal') return null;
+  return getLiteralStringValue(typedNode.value);
 }
 
 interface ExportedComponent {
   localName: string;
   exportedName: string;
   node: Rule.Node;
+}
+
+function createExportKey(component: ExportedComponent): string {
+  const rangeNode = component.node as Rule.Node & { range?: readonly number[] };
+  const start = rangeNode.range?.[0] ?? -1;
+  return `${component.localName}:${component.exportedName}:${start}`;
 }
 
 const rule: Rule.RuleModule = {
@@ -69,9 +79,9 @@ const rule: Rule.RuleModule = {
     },
     schema: [],
   },
-  create(context) {
+  create(context: Readonly<Rule.RuleContext>) {
     const localComponents = new Map<string, Rule.Node>();
-    const exportedComponents: ExportedComponent[] = [];
+    const exportedComponents = new Map<string, ExportedComponent>();
 
     function registerLocalComponent(name: string, node: Rule.Node): void {
       if (!isPascalCase(name)) return;
@@ -81,7 +91,126 @@ const rule: Rule.RuleModule = {
     function recordExport(localName: string, exportedName: string, node: Rule.Node): void {
       if (!localComponents.has(localName)) return;
       if (!isPascalCase(exportedName)) return;
-      exportedComponents.push({ localName, exportedName, node });
+      const component = { localName, exportedName, node };
+      exportedComponents.set(createExportKey(component), component);
+    }
+
+    function registerAndRecordSameNameExport(name: string, node: Rule.Node): void {
+      registerLocalComponent(name, node);
+      recordExport(name, name, node);
+    }
+
+    function recordExportedFunctionDeclaration(node: Rule.Node | null | undefined): boolean {
+      if (!node || node.type !== 'FunctionDeclaration') return false;
+      const fn = node as unknown as { id?: Rule.Node | null };
+      const idName = getExportedIdentifierName(fn.id);
+      if (!idName || !fn.id) return true;
+      registerAndRecordSameNameExport(idName, fn.id);
+      return true;
+    }
+
+    function recordExportedVariableDeclaration(node: Rule.Node | null | undefined): boolean {
+      if (!node || node.type !== 'VariableDeclaration') return false;
+      const variableDeclaration = node as unknown as {
+        declarations?: ReadonlyArray<{ id?: Rule.Node; init?: Rule.Node | null }>;
+      };
+      const entries = variableDeclaration.declarations ?? [];
+      for (const entry of entries) {
+        recordVariableDeclarationEntry(entry);
+      }
+      return true;
+    }
+
+    function recordVariableDeclarationEntry(entry: {
+      id?: Rule.Node;
+      init?: Rule.Node | null;
+    }): void {
+      if (!isFunctionLikeComponentInit(entry.init)) return;
+      const idName = getExportedIdentifierName(entry.id);
+      if (!idName || !entry.id) return;
+      registerAndRecordSameNameExport(idName, entry.id);
+    }
+
+    function recordExportSpecifier(specifier: Rule.Node): void {
+      if (specifier.type !== 'ExportSpecifier') return;
+      const exportSpecifier = specifier as unknown as {
+        local?: Rule.Node;
+        exported?: Rule.Node;
+      };
+      const localName = getExportedIdentifierName(exportSpecifier.local);
+      const exportedName = getExportedIdentifierName(exportSpecifier.exported);
+      if (!localName || !exportedName || !exportSpecifier.exported) return;
+      recordExport(localName, exportedName, exportSpecifier.exported);
+    }
+
+    function getBlockCandidates(
+      entries: ReadonlyArray<ExportedComponent>,
+      normalizedStem: string,
+    ): string[] {
+      return entries
+        .map((entry) => entry.localName)
+        .filter((name) => normalizeForComparison(name) === normalizedStem);
+    }
+
+    function hasAnyBlockPrefix(localName: string, blockCandidates: ReadonlyArray<string>): boolean {
+      return blockCandidates.some((block) => localName.startsWith(block));
+    }
+
+    function reportMissingPrefix(
+      exported: ExportedComponent,
+      blockCandidates: ReadonlyArray<string>,
+    ): void {
+      const preferredBlock = blockCandidates[0] ?? 'Block';
+      context.report({
+        node: exported.node,
+        messageId: 'exportedPartMustUseBlockPrefix',
+        data: {
+          name: exported.localName,
+          block: preferredBlock,
+          example: buildExampleName(preferredBlock, exported.localName),
+        },
+      });
+    }
+
+    function processNamedExportDeclaration(declarationNode: Rule.Node | null | undefined): void {
+      if (recordExportedFunctionDeclaration(declarationNode)) return;
+      recordExportedVariableDeclaration(declarationNode);
+    }
+
+    function processNamedExportSpecifiers(specifiers: ReadonlyArray<Rule.Node> | undefined): void {
+      for (const specifier of specifiers ?? []) {
+        recordExportSpecifier(specifier);
+      }
+    }
+
+    function getBlockCandidatesForFile(
+      exportedEntries: ReadonlyArray<ExportedComponent>,
+    ): ReadonlyArray<string> | null {
+      const stem = getFileStem(context.filename);
+      if (!stem || stem.toLowerCase() === 'index') return null;
+      const normalizedStem = normalizeForComparison(stem);
+      const blockCandidates = getBlockCandidates(exportedEntries, normalizedStem);
+      return blockCandidates.length === 0 ? null : blockCandidates;
+    }
+
+    function validateExportedComponent(
+      exported: ExportedComponent,
+      blockCandidates: ReadonlyArray<string>,
+    ): void {
+      const isBlockExport = blockCandidates.includes(exported.localName);
+      if (isBlockExport) return;
+      if (hasAnyBlockPrefix(exported.localName, blockCandidates)) return;
+      reportMissingPrefix(exported, blockCandidates);
+    }
+
+    function validateExportedComponents(): void {
+      const exportedEntries = [...exportedComponents.values()];
+      if (exportedEntries.length < 2) return;
+      const blockCandidates = getBlockCandidatesForFile(exportedEntries);
+      if (!blockCandidates) return;
+      for (const exported of exportedEntries) {
+        validateExportedComponent(exported, blockCandidates);
+      }
     }
 
     return {
@@ -101,102 +230,26 @@ const rule: Rule.RuleModule = {
       ExportNamedDeclaration(node: Rule.Node) {
         const declaration = node as unknown as {
           declaration?: Rule.Node | null;
-          specifiers?: Rule.Node[];
+          specifiers?: ReadonlyArray<Rule.Node>;
           source?: Rule.Node | null;
         };
 
         if (declaration.source) return;
-
-        if (declaration.declaration?.type === 'FunctionDeclaration') {
-          const fn = declaration.declaration as unknown as { id?: Rule.Node | null };
-          const idName = getExportedIdentifierName(fn.id);
-          if (!idName || !fn.id) return;
-          registerLocalComponent(idName, fn.id);
-          recordExport(idName, idName, fn.id);
-          return;
-        }
-
-        if (declaration.declaration?.type === 'VariableDeclaration') {
-          const variableDeclaration = declaration.declaration as unknown as {
-            declarations?: Array<{ id?: Rule.Node; init?: Rule.Node | null }>;
-          };
-          for (const entry of variableDeclaration.declarations ?? []) {
-            if (!isFunctionLikeComponentInit(entry.init)) continue;
-            const idName = getExportedIdentifierName(entry.id);
-            if (!idName || !entry.id) continue;
-            registerLocalComponent(idName, entry.id);
-            recordExport(idName, idName, entry.id);
-          }
-          return;
-        }
-
-        for (const specifier of declaration.specifiers ?? []) {
-          if (specifier.type !== 'ExportSpecifier') continue;
-          const exportSpecifier = specifier as unknown as {
-            local?: Rule.Node;
-            exported?: Rule.Node;
-          };
-          const localName = getExportedIdentifierName(exportSpecifier.local);
-          const exportedName = getExportedIdentifierName(exportSpecifier.exported);
-          if (!localName || !exportedName) continue;
-          if (!exportSpecifier.exported) continue;
-          recordExport(localName, exportedName, exportSpecifier.exported);
-        }
+        processNamedExportDeclaration(declaration.declaration);
+        processNamedExportSpecifiers(declaration.specifiers);
       },
       ExportDefaultDeclaration(node: Rule.Node) {
         const declaration = node as unknown as { declaration?: Rule.Node | null };
         const declared = declaration.declaration;
         if (!declared) return;
-
-        if (declared.type === 'FunctionDeclaration') {
-          const fn = declared as unknown as { id?: Rule.Node | null };
-          const idName = getExportedIdentifierName(fn.id);
-          if (!idName || !fn.id) return;
-          registerLocalComponent(idName, fn.id);
-          recordExport(idName, idName, fn.id);
-          return;
-        }
-
-        if (declared.type === 'Identifier') {
-          const idName = getExportedIdentifierName(declared);
-          if (!idName) return;
-          recordExport(idName, idName, declared);
-        }
+        if (recordExportedFunctionDeclaration(declared)) return;
+        if (declared.type !== 'Identifier') return;
+        const idName = getExportedIdentifierName(declared);
+        if (!idName) return;
+        recordExport(idName, idName, declared);
       },
       'Program:exit'() {
-        if (exportedComponents.length < 2) return;
-
-        const stem = getFileStem(context.filename);
-        if (!stem) return;
-        if (stem.toLowerCase() === 'index') return;
-
-        const normalizedStem = normalizeForComparison(stem);
-        const blockCandidates = exportedComponents
-          .map((entry) => entry.localName)
-          .filter((name) => normalizeForComparison(name) === normalizedStem);
-
-        if (blockCandidates.length === 0) return;
-
-        for (const exported of exportedComponents) {
-          const isBlockExport = blockCandidates.includes(exported.localName);
-          if (isBlockExport) continue;
-
-          const usesAnyBlockPrefix = blockCandidates.some((block) =>
-            exported.localName.startsWith(block),
-          );
-          if (usesAnyBlockPrefix) continue;
-
-          const preferredBlock = blockCandidates[0] ?? 'Block';
-          context.report({
-            node: exported.node,
-            messageId: 'exportedPartMustUseBlockPrefix',
-            data: {
-              name: exported.localName,
-              block: preferredBlock,
-              example: buildExampleName(preferredBlock, exported.localName),
-            },
-          });
-        }
+        validateExportedComponents();
       },
     };
   },
