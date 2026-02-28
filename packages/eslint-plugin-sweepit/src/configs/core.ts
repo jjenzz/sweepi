@@ -5,8 +5,8 @@ import functionalPlugin from 'eslint-plugin-functional';
 function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
   const coreConfig: Linter.Config = {
     plugins: {
-      '@typescript-eslint': tseslint.plugin as unknown as ESLint.Plugin,
       functional: functionalPlugin as unknown as ESLint.Plugin,
+      '@typescript-eslint': tseslint.plugin,
       sweepit: sweepitPlugin,
     },
     languageOptions: {
@@ -39,8 +39,8 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
   };
 
   return [
-    ...(tseslint.configs.recommended as Linter.Config[]),
-    ...(tseslint.configs.recommendedTypeChecked as Linter.Config[]),
+    ...tseslint.configs.recommended,
+    ...tseslint.configs.recommendedTypeChecked,
     coreConfig,
   ];
 }
