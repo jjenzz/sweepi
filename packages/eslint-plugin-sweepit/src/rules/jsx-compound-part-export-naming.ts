@@ -329,7 +329,11 @@ const rule: Rule.RuleModule = {
         if (!block) return;
 
         reportObjectExportsForBlock(readonlyContext, objectExports, block);
-        const componentExportsForBlock = getComponentExportsForBlock(localComponents, exports, block);
+        const componentExportsForBlock = getComponentExportsForBlock(
+          localComponents,
+          exports,
+          block,
+        );
         const componentExports = componentExportsForBlock.componentExports;
         if (componentExports.length < 2) return;
         reportMissingPartAliases(readonlyContext, componentExportsForBlock.partExports, block);
