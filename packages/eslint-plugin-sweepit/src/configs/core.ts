@@ -22,6 +22,7 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       'functional/immutable-data': [
         'error',
         {
+          ignoreClasses: true,
           ignoreAccessorPattern: ['*.displayName', '*.current'],
           ignoreMapsAndSets: true,
           ignoreNonConstDeclarations: {
