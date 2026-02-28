@@ -12,7 +12,7 @@ interface ScopeLike {
 interface VariableLike {
   name: string;
   scope: ScopeLike;
-  defs: Array<{ type?: string }>;
+  defs: Array<{ type?: string; name?: any }>;
 }
 
 interface IdentifierLike {
@@ -180,6 +180,62 @@ function isReadonlyTyped(type: ts.Type, checker: ts.TypeChecker): boolean {
   return false;
 }
 
+function isReadonlyTypeReferenceName(typeNameNode: any): boolean {
+  if (!typeNameNode) return false;
+  if (typeNameNode.type === 'Identifier') {
+    return (
+      typeNameNode.name === 'Readonly' ||
+      typeNameNode.name === 'ReadonlyArray' ||
+      typeNameNode.name === 'ReadonlyMap' ||
+      typeNameNode.name === 'ReadonlySet'
+    );
+  }
+
+  if (typeNameNode.type === 'TSQualifiedName') {
+    return isReadonlyTypeReferenceName(typeNameNode.right);
+  }
+
+  return false;
+}
+
+function isReadonlyTypeAnnotationNode(node: any): boolean {
+  if (!node) return false;
+
+  if (node.type === 'TSTypeOperator' && node.operator === 'readonly') {
+    return true;
+  }
+
+  if (node.type === 'TSArrayType') return false;
+
+  if (node.type === 'TSTypeReference') {
+    return isReadonlyTypeReferenceName(node.typeName);
+  }
+
+  if (node.type === 'TSParenthesizedType' || node.type === 'TSOptionalType') {
+    return isReadonlyTypeAnnotationNode(node.typeAnnotation);
+  }
+
+  if (node.type === 'TSUnionType' || node.type === 'TSIntersectionType') {
+    const entries = node.types ?? [];
+    return entries.length > 0 && entries.every((entry: any) => isReadonlyTypeAnnotationNode(entry));
+  }
+
+  return false;
+}
+
+function hasReadonlyTypeAnnotation(variable: VariableLike | null): boolean {
+  if (!variable) return false;
+
+  const definitions = variable.defs ?? [];
+  for (const definition of definitions) {
+    const nameNode = definition.name;
+    const annotationNode = nameNode?.typeAnnotation?.typeAnnotation;
+    if (isReadonlyTypeAnnotationNode(annotationNode)) return true;
+  }
+
+  return false;
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'problem',
@@ -261,6 +317,12 @@ const rule: Rule.RuleModule = {
     }
 
     function receiverIsReadonlyTyped(objectNode: { type?: string; name?: string }): boolean {
+      const identifier = getIdentifier(objectNode);
+      const resolvedVariable = identifier ? resolveVariable(sourceCode, identifier) : null;
+      if (hasReadonlyTypeAnnotation(resolvedVariable)) {
+        return true;
+      }
+
       if (!hasTypeInformation || !checker || !parserServices?.esTreeNodeToTSNodeMap) {
         return false;
       }
