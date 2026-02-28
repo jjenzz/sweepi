@@ -15,6 +15,8 @@ Run this skill when:
 2. You are about to commit or recommend committing code changes.
 3. You are linting code, or the user asks you to lint code.
 
+Read the AGENTS.md file that lives next to this skill before proceeding.
+
 ## Execution workflow
 
 1. Run in this order:

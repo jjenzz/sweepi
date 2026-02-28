@@ -6,7 +6,7 @@ This file is the single source of truth for Sweepi lint-fix policy, safety gates
 
 Before starting any implementation, edits, lint runs, or repo exploration for a task, ask the user this question:
 
-> May I enable Sweepi in your editor to fix errors as I work (updates `.vscode/settings.json`)? If not, Sweepi will run after completion.
+> Would you like to enable Sweepi errors in your editor (updates `.vscode/settings.json`)?
 
 Then follow this gate exactly:
 
@@ -26,8 +26,6 @@ Then follow this gate exactly:
 2. If the user answers **No**:
    - Do not update editor settings.
    - Continue work, and run `sweepi` after completion.
-3. If the user response is unclear:
-   - Ask a clarifying yes/no follow-up before doing any work.
 
 Never include your `.vscode/settings.json` changes in agent feature/fix commits.
 
