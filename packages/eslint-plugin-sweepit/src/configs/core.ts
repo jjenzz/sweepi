@@ -34,14 +34,13 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
       'max-params': ['error', { max: 4 }],
       'prefer-const': 'error',
       '@typescript-eslint/no-floating-promises': 'error',
-      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/switch-exhaustiveness-check': 'error',
       'sweepit/no-external-binding-mutation': 'error',
       'sweepit/complexity': ['error', { max: 5, variant: 'modified' }],
     },
   };
 
-  return [coreConfig];
+  return [...(tsEslintPlugin.configs['flat/recommended'] as Linter.Config[]), coreConfig];
 }
 
 export { createCoreConfig };
