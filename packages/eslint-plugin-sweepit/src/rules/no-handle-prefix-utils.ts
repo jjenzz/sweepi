@@ -13,7 +13,6 @@ interface Candidate {
 }
 
 interface SourceCodeLike {
-  ast: Rule.Node;
   getText: (node: Rule.Node) => string;
 }
 
@@ -32,12 +31,6 @@ function isOnJsxPropName(name: string): boolean {
   return third >= 'A' && third <= 'Z';
 }
 
-function isNode(value: unknown): value is Rule.Node {
-  if (!value || typeof value !== 'object') return false;
-  const maybeNode = value as Rule.Node & { type?: unknown };
-  return typeof maybeNode.type === 'string';
-}
-
 function asIdentifier(node: Rule.Node | null | undefined): IdentifierNode | null {
   if (!node || node.type !== 'Identifier') return null;
   const identifier = node as Rule.Node & { name?: unknown };
@@ -50,43 +43,14 @@ function isFunctionInit(node: Rule.Node | null | undefined): boolean {
   return node.type === 'ArrowFunctionExpression' || node.type === 'FunctionExpression';
 }
 
-function collectNodesFromArray(entries: unknown[]): Rule.Node[] {
-  let nodes: Rule.Node[] = [];
-  for (const entry of entries) {
-    if (!isNode(entry)) continue;
-    nodes = [...nodes, entry];
-  }
-  return nodes;
-}
-
-function collectNodesFromValue(value: unknown): Rule.Node[] {
-  if (!value) return [];
-  if (value instanceof Array) return collectNodesFromArray(value);
-  if (!isNode(value)) return [];
-  return [value];
-}
-
-function readChildNodes(node: Rule.Node): Rule.Node[] {
-  let childNodes: Rule.Node[] = [];
-  const entries = node as unknown as Record<string, unknown>;
-
-  for (const key in entries) {
-    if (key === 'parent') continue;
-    const nextNodes = collectNodesFromValue(entries[key]);
-    childNodes = [...childNodes, ...nextNodes];
-  }
-
-  return childNodes;
-}
-
-function mergeUnique(left: string[], right: string[]): string[] {
-  return [...new Set([...left, ...right])];
-}
-
 function getHandleNamesFromText(text: string): string[] {
   const matches = text.match(/\bhandle[A-Za-z0-9_$]*\b/g);
   if (!matches) return [];
   return [...new Set(matches)];
+}
+
+function mergeUnique(left: string[], right: string[]): string[] {
+  return [...new Set([...left, ...right])];
 }
 
 function getHandleIdentifier(node: Rule.Node | null | undefined): IdentifierNode | null {
@@ -96,48 +60,34 @@ function getHandleIdentifier(node: Rule.Node | null | undefined): IdentifierNode
   return id;
 }
 
-function getFunctionDeclarationCandidate(node: Rule.Node): Candidate[] {
-  if (node.type !== 'FunctionDeclaration') return [];
+function getFunctionDeclarationCandidate(node: Rule.Node): Candidate | null {
+  if (node.type !== 'FunctionDeclaration') return null;
   const declaration = node as Rule.Node & { id?: Rule.Node | null };
   const id = getHandleIdentifier(declaration.id ?? null);
-  if (!id) return [];
-  return [{ name: id.name, node: id }];
+  if (!id) return null;
+
+  return {
+    name: id.name,
+    node: id,
+  };
 }
 
-function getVariableCandidate(node: Rule.Node): Candidate[] {
-  if (node.type !== 'VariableDeclarator') return [];
+function getVariableCandidate(node: Rule.Node): Candidate | null {
+  if (node.type !== 'VariableDeclarator') return null;
   const declaration = node as Rule.Node & {
     id?: Rule.Node;
     init?: Rule.Node | null;
   };
   const id = getHandleIdentifier(declaration.id);
-  if (!id) return [];
-  if (!isFunctionInit(declaration.init ?? null)) return [];
-  return [{ name: id.name, node: id }];
+  if (!id || !isFunctionInit(declaration.init ?? null)) return null;
+
+  return {
+    name: id.name,
+    node: id,
+  };
 }
 
-function extractCandidate(node: Rule.Node): Candidate[] {
-  return [...getFunctionDeclarationCandidate(node), ...getVariableCandidate(node)];
-}
-
-function collectCandidates(node: Rule.Node): Candidate[] {
-  let candidates = extractCandidate(node);
-  const childNodes = readChildNodes(node);
-  for (const childNode of childNodes) {
-    candidates = [...candidates, ...collectCandidates(childNode)];
-  }
-  return candidates;
-}
-
-function getJsxAttribute(
-  node: Rule.Node,
-): { type: 'JSXAttribute'; name?: unknown; value?: unknown } | null {
-  const maybeNode = node as unknown as { type?: string; name?: unknown; value?: unknown };
-  if (maybeNode.type !== 'JSXAttribute') return null;
-  return maybeNode as { type: 'JSXAttribute'; name?: unknown; value?: unknown };
-}
-
-function getOnPropName(attribute: { type: 'JSXAttribute'; name?: unknown }): string | null {
+function getOnPropName(attribute: Rule.Node & { name?: unknown }): string | null {
   const nameNode = attribute.name as JsxIdentifierNode | undefined;
   if (!nameNode || nameNode.type !== 'JSXIdentifier') return null;
   const propName: string = nameNode.name;
@@ -145,43 +95,26 @@ function getOnPropName(attribute: { type: 'JSXAttribute'; name?: unknown }): str
   return propName;
 }
 
-function getExpressionFromAttribute(attribute: {
-  type: 'JSXAttribute';
-  value?: unknown;
-}): Rule.Node | null {
+function getExpressionFromAttribute(attribute: Rule.Node & { value?: unknown }): Rule.Node | null {
   const value = attribute.value as
     | { type?: string; expression?: Rule.Node | null }
     | null
     | undefined;
   if (!value || value.type !== 'JSXExpressionContainer') return null;
-  const expressionContainer = value as { expression?: unknown };
-  if (!isNode(expressionContainer.expression)) return null;
-  return expressionContainer.expression ?? null;
+  return value.expression ?? null;
 }
 
-function getOnPropExpression(node: Rule.Node): Rule.Node | null {
-  const attribute = getJsxAttribute(node);
-  if (!attribute) return null;
+function getUsedHandleNamesFromAttribute(
+  attribute: Rule.Node & { name?: unknown; value?: unknown },
+  sourceCode: Readonly<SourceCodeLike>,
+): string[] {
   const onPropName = getOnPropName(attribute);
-  if (!onPropName) return null;
-  return getExpressionFromAttribute(attribute);
-}
+  if (!onPropName) return [];
 
-function extractOnPropHandleNames(node: Rule.Node, sourceCode: Readonly<SourceCodeLike>): string[] {
-  const expression = getOnPropExpression(node);
+  const expression = getExpressionFromAttribute(attribute);
   if (!expression) return [];
-  const expressionText = sourceCode.getText(expression);
-  return getHandleNamesFromText(expressionText);
-}
 
-function collectOnPropHandleNames(node: Rule.Node, sourceCode: Readonly<SourceCodeLike>): string[] {
-  let names = extractOnPropHandleNames(node, sourceCode);
-  const childNodes = readChildNodes(node);
-  for (const childNode of childNodes) {
-    const childNames = collectOnPropHandleNames(childNode, sourceCode);
-    names = mergeUnique(names, childNames);
-  }
-  return names;
+  return getHandleNamesFromText(sourceCode.getText(expression));
 }
 
 const rule: Rule.RuleModule = {
@@ -200,15 +133,29 @@ const rule: Rule.RuleModule = {
   },
   create(context) {
     const reportContext: Readonly<Rule.RuleContext> = context;
-    const sourceCode = context.sourceCode as unknown as SourceCodeLike;
+    const sourceCode = context.sourceCode as unknown as Readonly<SourceCodeLike>;
+    let candidates: Candidate[] = [];
+    let usedNames: string[] = [];
 
     return {
+      FunctionDeclaration(node: Rule.Node) {
+        const candidate = getFunctionDeclarationCandidate(node);
+        if (!candidate) return;
+        candidates = [...candidates, candidate];
+      },
+      VariableDeclarator(node: Rule.Node) {
+        const candidate = getVariableCandidate(node);
+        if (!candidate) return;
+        candidates = [...candidates, candidate];
+      },
+      JSXAttribute(node: Rule.Node) {
+        const attribute = node as Rule.Node & { name?: unknown; value?: unknown };
+        const namesFromAttribute = getUsedHandleNamesFromAttribute(attribute, sourceCode);
+        usedNames = mergeUnique(usedNames, namesFromAttribute);
+      },
       'Program:exit'() {
-        const candidates = collectCandidates(sourceCode.ast);
-        const onPropNames = collectOnPropHandleNames(sourceCode.ast, sourceCode);
-
         for (const candidate of candidates) {
-          if (onPropNames.includes(candidate.name)) continue;
+          if (usedNames.includes(candidate.name)) continue;
 
           reportContext.report({
             node: candidate.node,
