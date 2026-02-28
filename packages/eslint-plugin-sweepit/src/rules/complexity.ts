@@ -138,24 +138,23 @@ function getReportName(origin: Rule.CodePath['origin'], node: Rule.Node): string
   return getFunctionNameWithKind(node);
 }
 
-function reportComplexity(
-  context: Rule.RuleContext,
-  node: Rule.Node,
-  loc: Rule.Node['loc'],
-  name: string,
-  complexity: number,
-  max: number,
-): void {
+function createComplexityDescriptor(details: {
+  node: Rule.Node;
+  loc: Rule.Node['loc'];
+  name: string;
+  complexity: number;
+  max: number;
+}): Rule.ReportDescriptor {
   const reportDescriptor = {
-    node,
+    node: details.node,
     messageId: 'complex',
     data: {
-      name: upperCaseFirst(name),
-      complexity,
-      max,
+      name: upperCaseFirst(details.name),
+      complexity: details.complexity,
+      max: details.max,
     },
   };
-  context.report(loc ? { ...reportDescriptor, loc } : reportDescriptor);
+  return details.loc ? { ...reportDescriptor, loc: details.loc } : reportDescriptor;
 }
 
 const rule: Rule.RuleModule = {
@@ -197,6 +196,7 @@ const rule: Rule.RuleModule = {
     },
   },
   create(context) {
+    const report = context.report.bind(context);
     const option = context.options[0] as ComplexityOption | undefined;
     const parsedOptions = parseOptions(option);
     let complexities: number[] = [];
@@ -259,7 +259,14 @@ const rule: Rule.RuleModule = {
 
         const name = getReportName(origin, node);
         const loc = getFunctionLoc(node);
-        reportComplexity(context, node, loc, name, complexity, parsedOptions.threshold);
+        const descriptor = createComplexityDescriptor({
+          node,
+          loc,
+          name,
+          complexity,
+          max: parsedOptions.threshold,
+        });
+        report(descriptor);
       },
     };
   },
