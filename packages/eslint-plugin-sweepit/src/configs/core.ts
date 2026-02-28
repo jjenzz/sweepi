@@ -39,11 +39,7 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
     },
   };
 
-  return [
-    ...tseslint.configs.recommended,
-    ...tseslint.configs.recommendedTypeChecked,
-    coreConfig,
-  ];
+  return [...tseslint.configs.recommended, ...tseslint.configs.recommendedTypeChecked, coreConfig];
 }
 
 export { createCoreConfig };

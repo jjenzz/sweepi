@@ -53,6 +53,7 @@ describe('plugin:sweepit/core', () => {
     expect(coreConfig.rules?.['prefer-const']).toBe('error');
     expect(coreConfig.rules?.['@typescript-eslint/switch-exhaustiveness-check']).toBe('error');
     expect(coreConfig.plugins?.sweepit).toBeDefined();
+    expect(coreConfig.rules?.['sweepit/no-external-binding-mutation']).toBe('error');
     expect(coreConfig.rules?.['sweepit/complexity']).toEqual([
       'error',
       { max: 5, variant: 'modified' },

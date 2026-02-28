@@ -23,6 +23,15 @@ Receiver call requirement:
 
 - calls on external or parameter bindings are only allowed when the receiver is readonly-typed (for example `ReadonlyArray<T>`, `ReadonlyMap<K, V>`, `ReadonlySet<T>`, or `readonly` tuples).
 
+## Options
+
+### `allowEnclosingFunctionBindings` (default: `true`)
+
+When enabled, the rule allows mutations/calls on bindings declared in the nearest enclosing function scope (factory-style closures), while still reporting:
+
+- module/global bindings, and
+- parameter bindings.
+
 ## Examples
 
 ### Incorrect
@@ -44,6 +53,15 @@ function normalize(input: string) {
 function bump() {
   let count = 0;
   count = count + 1;
+}
+
+function createApi() {
+  const store = new Map<string, string>();
+  return {
+    doSomething() {
+      store.set('foo', 'bar');
+    },
+  };
 }
 
 function inspect(cache: ReadonlyMap<string, number>) {

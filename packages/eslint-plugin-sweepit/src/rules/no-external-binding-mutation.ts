@@ -53,6 +53,10 @@ interface FunctionState {
   parameterVariables: Set<VariableLike>;
 }
 
+interface RuleOptions {
+  allowEnclosingFunctionBindings: boolean;
+}
+
 function isFunctionNode(node: { type?: string }): boolean {
   return (
     node.type === 'FunctionDeclaration' ||
@@ -100,6 +104,15 @@ function getFunctionScope(sourceCode: any, functionNode: object): ScopeLike | nu
   return null;
 }
 
+function getNearestEnclosingFunctionScope(functionScope: ScopeLike): ScopeLike | null {
+  let currentScope = functionScope.upper ?? null;
+  while (currentScope) {
+    if (currentScope.type === 'function') return currentScope;
+    currentScope = currentScope.upper ?? null;
+  }
+  return null;
+}
+
 function collectFunctionState(functionScope: ScopeLike): FunctionState {
   const localVariables = new Set<VariableLike>();
   const parameterVariables = new Set<VariableLike>();
@@ -127,6 +140,11 @@ function collectFunctionState(functionScope: ScopeLike): FunctionState {
 
   visitScope(functionScope);
   return { localVariables, parameterVariables };
+}
+
+function isParameterVariable(variable: VariableLike): boolean {
+  const defs = variable.defs ?? [];
+  return defs.some((definition) => definition.type === 'Parameter');
 }
 
 function getIdentifier(node: any): IdentifierLike | null {
@@ -243,7 +261,17 @@ const rule: Rule.RuleModule = {
       description: 'Disallow mutating bindings from outer scope or parameters within a function',
       url: 'https://github.com/jjenzz/sweepit/tree/main/skills/sweepi/rules/no-external-binding-mutation.md',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          allowEnclosingFunctionBindings: {
+            type: 'boolean',
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       noExternalBindingMutation:
         "Only mutate local bindings. '{{name}}' is external or a parameter.",
@@ -252,6 +280,10 @@ const rule: Rule.RuleModule = {
     },
   },
   create(context) {
+    const option = (context.options[0] as Partial<RuleOptions> | undefined) ?? {};
+    const parsedOptions: RuleOptions = {
+      allowEnclosingFunctionBindings: option.allowEnclosingFunctionBindings !== false,
+    };
     const parserServices =
       (
         context.sourceCode as {
@@ -295,6 +327,20 @@ const rule: Rule.RuleModule = {
 
       if (functionState.parameterVariables.has(variable)) {
         return true;
+      }
+
+      if (parsedOptions.allowEnclosingFunctionBindings) {
+        const functionScope = getFunctionScope(sourceCode, functionNode);
+        const nearestEnclosingFunctionScope = functionScope
+          ? getNearestEnclosingFunctionScope(functionScope)
+          : null;
+        if (
+          nearestEnclosingFunctionScope &&
+          variable.scope === nearestEnclosingFunctionScope &&
+          !isParameterVariable(variable)
+        ) {
+          return false;
+        }
       }
 
       return !functionState.localVariables.has(variable);
