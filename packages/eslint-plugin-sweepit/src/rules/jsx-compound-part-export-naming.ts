@@ -246,7 +246,7 @@ const rule: Rule.RuleModule = {
         "Block '{{block}}' exports parts. Also export its root as `export { {{block}} as Root }`.",
       requireRootAlias: "Export block '{{block}}' as 'Root' (export { {{block}} as Root }).",
       noRuntimeObjectExport:
-        "Avoid exporting runtime object '{{name}}' for compound APIs. Export aliase parts instead.",
+        "Avoid exporting runtime object '{{name}}' for compound APIs. Export aliased parts instead.",
     },
     schema: [],
   },
