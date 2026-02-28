@@ -72,6 +72,18 @@ describe('no-external-binding-mutation', () => {
           }
         `,
       },
+      {
+        code: `
+          function createApi() {
+            const store = new Map<string, string>();
+            return {
+              doSomething() {
+                store.set('foo', 'bar');
+              },
+            };
+          }
+        `,
+      },
     ],
     invalid: [
       {
@@ -124,6 +136,33 @@ describe('no-external-binding-mutation', () => {
           }
         `,
         errors: [{ messageId: 'noExternalBindingCallRequiresReadonly', data: { name: 'values' } }],
+      },
+      {
+        code: `
+          function createApi() {
+            const store = new Map<string, string>();
+            return {
+              doSomething() {
+                store.set('foo', 'bar');
+              },
+            };
+          }
+        `,
+        options: [{ allowEnclosingFunctionBindings: false }],
+        errors: [{ messageId: 'noExternalBindingCallRequiresReadonly', data: { name: 'store' } }],
+      },
+      {
+        code: `
+          function createApi(store: Map<string, string>) {
+            return {
+              doSomething() {
+                store.set('foo', 'bar');
+              },
+            };
+          }
+        `,
+        options: [{ allowEnclosingFunctionBindings: true }],
+        errors: [{ messageId: 'noExternalBindingCallRequiresReadonly', data: { name: 'store' } }],
       },
     ],
   });
