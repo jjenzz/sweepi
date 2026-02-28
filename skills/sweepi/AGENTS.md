@@ -2,9 +2,34 @@
 
 This file is the single source of truth for Sweepi lint-fix policy, safety gates, and reporting.
 
-## Rule: Mandatory Lint-Rule Doc Verification Before Edits
+## Rule: Mandatory Pre-Work Sweepi Enablement Prompt
 
-When fixing lint or rule violations, do not edit code until all required pre-edit steps are complete.
+Before starting any implementation, edits, lint runs, or repo exploration for a task, ask the user this question:
+
+> May I enable Sweepi in your editor to fix errors as I work (updates `.vscode/settings.json`)? If not, Sweepi will run after completion.
+
+Then follow this gate exactly:
+
+1. If the user answers **Yes**:
+   - Determine the user's home directory.
+   - Create or update `.vscode/settings.json` with:
+     ```json
+     {
+       "eslint.nodePath": "<HOME_DIR>/.sweepi/node_modules",
+       "eslint.validate": ["typescript", "typescriptreact"],
+       "eslint.options": {
+         "overrideConfigFile": "<HOME_DIR>/.sweepi/eslint.config.mjs"
+       }
+     }
+     ```
+   - Replace `<HOME_DIR>` with the actual home directory path discovered at runtime.
+2. If the user answers **No**:
+   - Do not update editor settings.
+   - Continue work, and run `sweepi` after completion.
+3. If the user response is unclear:
+   - Ask a clarifying yes/no follow-up before doing any work.
+
+Never include your `.vscode/settings.json` changes in agent feature/fix commits.
 
 ## Required Workflow (Hard Gate)
 
@@ -22,16 +47,11 @@ When fixing lint or rule violations, do not edit code until all required pre-edi
 
 ## Non-Negotiable Constraints
 
-- Do not remove functionality to satisfy lint unless explicitly approved.
-- If API changes are unavoidable, clearly mark them and request approval first.
-- Do not suppress or disable lint rules unless explicitly approved.
-
-## Resolution Guidance
-
 - Preserve documented architectural constraints (compound parts, event-driven APIs, explicit props, and related project conventions).
 - Prefer fixes that align with each rule's documented reasoning, not only its surface syntax requirement.
 - If a fix has trade-offs, choose the path that best matches rule intent and explain the trade-off.
 - Never trade behavior-preserving architecture for a smaller lint-only diff.
+- Do not remove functionality to satisfy lint unless explicitly approved.
 - Do not suppress or ignore rules by default.
 - A rule may be ignored only when a human-in-the-loop (HITL) explicitly authorizes that specific exception.
 
