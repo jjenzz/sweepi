@@ -12,6 +12,12 @@ interface ObjectExportRecord {
   node: Rule.Node;
 }
 
+interface NamedExportDeclarationNode {
+  declaration?: Rule.Node | null;
+  specifiers?: Rule.Node[];
+  source?: Rule.Node | null;
+}
+
 function isPascalCase(name: string): boolean {
   if (name.length === 0) return false;
   const first = name[0];
@@ -44,6 +50,187 @@ function getIdentifierLikeName(node: Rule.Node | null | undefined): string | nul
   return null;
 }
 
+function collectLocalComponentNames(
+  localComponents: ReadonlySet<string>,
+  objectExports: ReadonlyArray<ObjectExportRecord>,
+): ReadonlySet<string> {
+  return new Set<string>([...localComponents, ...objectExports.map((entry) => entry.name)]);
+}
+
+function getBlockName(
+  stem: string,
+  localComponents: ReadonlySet<string>,
+  objectExports: ReadonlyArray<ObjectExportRecord>,
+): string | null {
+  const normalizedStem = normalizeForComparison(stem);
+  const localComponentNames = collectLocalComponentNames(localComponents, objectExports);
+  const blockCandidates = [...localComponentNames].filter(
+    (name) => normalizeForComparison(name) === normalizedStem,
+  );
+  const block = blockCandidates[0];
+  if (!block) return null;
+  return block;
+}
+
+function getComponentExportsForBlock(
+  localComponents: ReadonlySet<string>,
+  exports: ReadonlyArray<ExportRecord>,
+  block: string,
+): {
+  componentExports: ReadonlyArray<ExportRecord>;
+  blockExports: ReadonlyArray<ExportRecord>;
+  partExports: ReadonlyArray<ExportRecord>;
+} {
+  const componentExports = exports.filter(
+    (entry) => localComponents.has(entry.localName) && isPascalCase(entry.localName),
+  );
+  const blockExports = componentExports.filter((entry) => entry.localName === block);
+  const partExports = componentExports.filter(
+    (entry) => entry.localName !== block && entry.localName.startsWith(block),
+  );
+  return { componentExports, blockExports, partExports };
+}
+
+function reportObjectExportsForBlock(
+  context: Readonly<Rule.RuleContext>,
+  objectExports: ReadonlyArray<ObjectExportRecord>,
+  block: string,
+): void {
+  for (const objectExport of objectExports) {
+    if (objectExport.name !== block) continue;
+    context.report({
+      node: objectExport.node,
+      messageId: 'noRuntimeObjectExport',
+      data: { name: objectExport.name },
+    });
+  }
+}
+
+function reportMissingPartAliases(
+  context: Readonly<Rule.RuleContext>,
+  partExports: ReadonlyArray<ExportRecord>,
+  block: string,
+): void {
+  const partNames = [...new Set(partExports.map((entry) => entry.localName))];
+  for (const partName of partNames) {
+    const expectedPartAlias = partName.slice(block.length);
+    if (expectedPartAlias.length === 0) continue;
+
+    const partEntries = partExports.filter((entry) => entry.localName === partName);
+    const hasPartAlias = partEntries.some((entry) => entry.exportedName === expectedPartAlias);
+    if (hasPartAlias) continue;
+
+    const firstPartEntry = partEntries[0];
+    if (!firstPartEntry) continue;
+    context.report({
+      node: firstPartEntry.node,
+      messageId: 'requirePartAlias',
+      data: {
+        local: partName,
+        part: expectedPartAlias,
+        block,
+      },
+    });
+  }
+}
+
+function reportMissingRootExports(
+  context: Readonly<Rule.RuleContext>,
+  block: string,
+  blockExports: ReadonlyArray<ExportRecord>,
+  partExports: ReadonlyArray<ExportRecord>,
+): void {
+  if (partExports.length === 0) return;
+
+  if (blockExports.length === 0) {
+    const firstPartExport = partExports[0];
+    if (!firstPartExport) return;
+    context.report({
+      node: firstPartExport.node,
+      messageId: 'requireRootExport',
+      data: { block },
+    });
+    return;
+  }
+
+  const hasRootAlias = blockExports.some((entry) => entry.exportedName === 'Root');
+  if (hasRootAlias) return;
+
+  const firstBlockExport = blockExports[0];
+  if (!firstBlockExport) return;
+  context.report({
+    node: firstBlockExport.node,
+    messageId: 'requireRootAlias',
+    data: { block },
+  });
+}
+
+function collectNamedSpecifierExports(
+  declaration: NamedExportDeclarationNode,
+  recordExport: (localName: string, exportedName: string, node: Rule.Node) => void,
+): void {
+  for (const specifier of declaration.specifiers ?? []) {
+    if (specifier.type !== 'ExportSpecifier') continue;
+    const exportSpecifier = specifier as unknown as {
+      local?: Rule.Node;
+      exported?: Rule.Node;
+    };
+    const localName = getIdentifierLikeName(exportSpecifier.local);
+    const exportedName = getIdentifierLikeName(exportSpecifier.exported);
+    if (!localName || !exportedName || !exportSpecifier.exported) continue;
+    recordExport(localName, exportedName, exportSpecifier.exported);
+  }
+}
+
+function processNamedFunctionExport(
+  declaration: NamedExportDeclarationNode,
+  registerLocalComponent: (name: string) => void,
+  recordExport: (localName: string, exportedName: string, node: Rule.Node) => void,
+): boolean {
+  if (declaration.declaration?.type !== 'FunctionDeclaration') return false;
+  const fn = declaration.declaration as unknown as { id?: Rule.Node | null };
+  const idName = getIdentifierLikeName(fn.id);
+  if (!idName || !fn.id) return true;
+  registerLocalComponent(idName);
+  recordExport(idName, idName, fn.id);
+  return true;
+}
+
+function processNamedVariableEntry(
+  entry: { id?: Rule.Node; init?: Rule.Node | null },
+  registerLocalComponent: (name: string) => void,
+  recordObjectExport: (name: string, node: Rule.Node) => void,
+  recordExport: (localName: string, exportedName: string, node: Rule.Node) => void,
+): void {
+  const idName = getIdentifierLikeName(entry.id);
+  if (!idName || !entry.id) return;
+
+  if (entry.init?.type === 'ObjectExpression' && isPascalCase(idName)) {
+    recordObjectExport(idName, entry.id);
+    return;
+  }
+
+  if (!isFunctionLikeComponentInit(entry.init)) return;
+  registerLocalComponent(idName);
+  recordExport(idName, idName, entry.id);
+}
+
+function processNamedVariableExport(
+  declaration: NamedExportDeclarationNode,
+  registerLocalComponent: (name: string) => void,
+  recordObjectExport: (name: string, node: Rule.Node) => void,
+  recordExport: (localName: string, exportedName: string, node: Rule.Node) => void,
+): boolean {
+  if (declaration.declaration?.type !== 'VariableDeclaration') return false;
+  const variableDeclaration = declaration.declaration as unknown as {
+    declarations?: Array<{ id?: Rule.Node; init?: Rule.Node | null }>;
+  };
+  for (const entry of variableDeclaration.declarations ?? []) {
+    processNamedVariableEntry(entry, registerLocalComponent, recordObjectExport, recordExport);
+  }
+  return true;
+}
+
 const rule: Rule.RuleModule = {
   meta: {
     type: 'suggestion',
@@ -64,9 +251,10 @@ const rule: Rule.RuleModule = {
     schema: [],
   },
   create(context) {
+    const readonlyContext = context as Readonly<Rule.RuleContext>;
     const localComponents = new Set<string>();
-    const exports: ExportRecord[] = [];
-    const objectExports: ObjectExportRecord[] = [];
+    let exports: ReadonlyArray<ExportRecord> = [];
+    let objectExports: ReadonlyArray<ObjectExportRecord> = [];
 
     function registerLocalComponent(name: string): void {
       if (!isPascalCase(name)) return;
@@ -74,7 +262,11 @@ const rule: Rule.RuleModule = {
     }
 
     function recordExport(localName: string, exportedName: string, node: Rule.Node): void {
-      exports.push({ localName, exportedName, node });
+      exports = [...exports, { localName, exportedName, node }];
+    }
+
+    function recordObjectExport(name: string, node: Rule.Node): void {
+      objectExports = [...objectExports, { name, node }];
     }
 
     return {
@@ -92,54 +284,21 @@ const rule: Rule.RuleModule = {
         registerLocalComponent(idName);
       },
       ExportNamedDeclaration(node: Rule.Node) {
-        const declaration = node as unknown as {
-          declaration?: Rule.Node | null;
-          specifiers?: Rule.Node[];
-          source?: Rule.Node | null;
-        };
+        const declaration = node as NamedExportDeclarationNode;
 
         if (declaration.source) return;
-
-        if (declaration.declaration?.type === 'FunctionDeclaration') {
-          const fn = declaration.declaration as unknown as { id?: Rule.Node | null };
-          const idName = getIdentifierLikeName(fn.id);
-          if (!idName || !fn.id) return;
-          registerLocalComponent(idName);
-          recordExport(idName, idName, fn.id);
+        if (processNamedFunctionExport(declaration, registerLocalComponent, recordExport)) return;
+        if (
+          processNamedVariableExport(
+            declaration,
+            registerLocalComponent,
+            recordObjectExport,
+            recordExport,
+          )
+        ) {
           return;
         }
-
-        if (declaration.declaration?.type === 'VariableDeclaration') {
-          const variableDeclaration = declaration.declaration as unknown as {
-            declarations?: Array<{ id?: Rule.Node; init?: Rule.Node | null }>;
-          };
-          for (const entry of variableDeclaration.declarations ?? []) {
-            const idName = getIdentifierLikeName(entry.id);
-            if (!idName || !entry.id) continue;
-
-            if (entry.init?.type === 'ObjectExpression' && isPascalCase(idName)) {
-              objectExports.push({ name: idName, node: entry.id });
-              continue;
-            }
-
-            if (!isFunctionLikeComponentInit(entry.init)) continue;
-            registerLocalComponent(idName);
-            recordExport(idName, idName, entry.id);
-          }
-          return;
-        }
-
-        for (const specifier of declaration.specifiers ?? []) {
-          if (specifier.type !== 'ExportSpecifier') continue;
-          const exportSpecifier = specifier as unknown as {
-            local?: Rule.Node;
-            exported?: Rule.Node;
-          };
-          const localName = getIdentifierLikeName(exportSpecifier.local);
-          const exportedName = getIdentifierLikeName(exportSpecifier.exported);
-          if (!localName || !exportedName || !exportSpecifier.exported) continue;
-          recordExport(localName, exportedName, exportSpecifier.exported);
-        }
+        collectNamedSpecifierExports(declaration, recordExport);
       },
       ExportDefaultDeclaration(node: Rule.Node) {
         const declaration = node as unknown as { declaration?: Rule.Node | null };
@@ -162,82 +321,24 @@ const rule: Rule.RuleModule = {
         }
       },
       'Program:exit'() {
-        const stem = getFileStem(context.filename);
+        const stem = getFileStem(readonlyContext.filename);
         if (!stem) return;
         if (stem.toLowerCase() === 'index') return;
 
-        const normalizedStem = normalizeForComparison(stem);
-        const blockCandidates = [
-          ...new Set([...localComponents, ...objectExports.map((e) => e.name)]),
-        ].filter((name) => normalizeForComparison(name) === normalizedStem);
-        if (blockCandidates.length === 0) return;
-
-        const block = blockCandidates[0];
+        const block = getBlockName(stem, localComponents, objectExports);
         if (!block) return;
-        for (const objectExport of objectExports) {
-          if (objectExport.name !== block) continue;
-          context.report({
-            node: objectExport.node,
-            messageId: 'noRuntimeObjectExport',
-            data: { name: objectExport.name },
-          });
-        }
 
-        const componentExports = exports.filter(
-          (entry) => localComponents.has(entry.localName) && isPascalCase(entry.localName),
-        );
+        reportObjectExportsForBlock(readonlyContext, objectExports, block);
+        const componentExportsForBlock = getComponentExportsForBlock(localComponents, exports, block);
+        const componentExports = componentExportsForBlock.componentExports;
         if (componentExports.length < 2) return;
-        const blockExports = componentExports.filter((entry) => entry.localName === block);
-        const partExports = componentExports.filter(
-          (entry) => entry.localName !== block && entry.localName.startsWith(block),
+        reportMissingPartAliases(readonlyContext, componentExportsForBlock.partExports, block);
+        reportMissingRootExports(
+          readonlyContext,
+          block,
+          componentExportsForBlock.blockExports,
+          componentExportsForBlock.partExports,
         );
-
-        const partNames = [...new Set(partExports.map((entry) => entry.localName))];
-        for (const partName of partNames) {
-          const expectedPartAlias = partName.slice(block.length);
-          if (expectedPartAlias.length === 0) continue;
-
-          const partEntries = partExports.filter((entry) => entry.localName === partName);
-          const hasPartAlias = partEntries.some(
-            (entry) => entry.exportedName === expectedPartAlias,
-          );
-          if (hasPartAlias) continue;
-
-          const firstPartEntry = partEntries[0];
-          if (!firstPartEntry) continue;
-          context.report({
-            node: firstPartEntry.node,
-            messageId: 'requirePartAlias',
-            data: {
-              local: partName,
-              part: expectedPartAlias,
-              block,
-            },
-          });
-        }
-
-        if (partExports.length > 0) {
-          if (blockExports.length === 0) {
-            const firstPartExport = partExports[0];
-            if (!firstPartExport) return;
-            context.report({
-              node: firstPartExport.node,
-              messageId: 'requireRootExport',
-              data: { block },
-            });
-          } else {
-            const hasRootAlias = blockExports.some((entry) => entry.exportedName === 'Root');
-            if (!hasRootAlias) {
-              const firstBlockExport = blockExports[0];
-              if (!firstBlockExport) return;
-              context.report({
-                node: firstBlockExport.node,
-                messageId: 'requireRootAlias',
-                data: { block },
-              });
-            }
-          }
-        }
       },
     };
   },
