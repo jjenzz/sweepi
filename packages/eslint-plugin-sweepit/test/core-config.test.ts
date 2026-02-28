@@ -40,6 +40,7 @@ describe('plugin:sweepit/core', () => {
     expect(coreConfig.rules?.['functional/immutable-data']).toEqual([
       'error',
       {
+        ignoreClasses: true,
         ignoreAccessorPattern: ['*.displayName', '*.current'],
         ignoreMapsAndSets: true,
         ignoreNonConstDeclarations: {
