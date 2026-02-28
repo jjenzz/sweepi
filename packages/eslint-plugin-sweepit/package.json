@@ -1,6 +1,6 @@
 {
   "name": "eslint-plugin-sweepit",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "Opinionated architectural lint rules for Sweepit.",
   "license": "MIT",
   "type": "module",
