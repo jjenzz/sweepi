@@ -1,3 +1,23 @@
+# v0.0.17 (Sat Feb 28 2026)
+
+#### 🚀 Enhancement
+
+- Move sweepi rule docs into skill directory [#38](https://github.com/jjenzz/sweepi/pull/38) ([@jjenzz](https://github.com/jjenzz))
+- Add max-params to core config [#34](https://github.com/jjenzz/sweepi/pull/34) ([@jjenzz](https://github.com/jjenzz))
+- Add sweepit complexity rule and component carve-out [#33](https://github.com/jjenzz/sweepi/pull/33) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🏠 Housekeeping
+
+- Add canary release job to test workflow [#37](https://github.com/jjenzz/sweepi/pull/37) ([@jjenzz](https://github.com/jjenzz))
+- Move no-floating-promises to core config [#35](https://github.com/jjenzz/sweepi/pull/35) ([@jjenzz](https://github.com/jjenzz))
+- Remove SonarJS from core config and cleanup docs [#36](https://github.com/jjenzz/sweepi/pull/36) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.16 (Fri Feb 27 2026)
 
 #### 🚀 Enhancement
