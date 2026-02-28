@@ -1,3 +1,20 @@
+# v0.0.18 (Sat Feb 28 2026)
+
+#### 🚀 Enhancement
+
+- Update immutable-data core config for const parameters [#40](https://github.com/jjenzz/sweepi/pull/40) ([@jjenzz](https://github.com/jjenzz))
+- Add no-let-closure-mutation core lint rule [#41](https://github.com/jjenzz/sweepi/pull/41) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🏠 Housekeeping
+
+- update skill md files [#39](https://github.com/jjenzz/sweepi/pull/39) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.17 (Sat Feb 28 2026)
 
 #### 🚀 Enhancement
