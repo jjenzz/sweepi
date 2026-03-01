@@ -1,12 +1,12 @@
 # Avoid repeated object returns (`no-return-object-repetition`)
 
-Prefer constructing shared defaults once when a function has multiple `return { ... }` objects with heavily overlapping keys.
+Prefer reusing a shared base object when a function has multiple `return { ... }` objects with heavily overlapping keys.
 
 ## Why
 
 When each return path repeats the same object shape, it is harder to scan what actually changes by code path.
 
-Using shared defaults and targeted overrides makes differences explicit.
+Using a shared base object and targeted overrides makes differences explicit.
 
 ## Rule Details
 
@@ -59,11 +59,11 @@ This catches cases where one return mostly mirrors another and enough keys are r
 ### Incorrect
 
 ```ts
-function parseRunOptions(argumentsList: string[]) {
+function parseRunOptions(argumentsList: string[], options: ParsedRunOptions) {
   if (argumentsList.includes('--all')) {
     return {
-      projectDirectory: '.',
-      all: true,
+      projectDirectory: options.projectDirectory,
+      all: options.all,
       format: 'stylish',
     };
   }
@@ -71,26 +71,35 @@ function parseRunOptions(argumentsList: string[]) {
   return {
     projectDirectory: '.',
     all: false,
-    format: 'stylish',
+    format: options.format,
   };
 }
 ```
 
-### Correct
+### Correct (reuse an existing base object)
+
+```ts
+function parseRunArgument(argument: string, options: ParsedRunOptions) {
+  if (argument === '--all') {
+    return { ...options, format: 'stylish' };
+  }
+
+  return { ...options, projectDirectory: '.', all: false };
+}
+```
+
+### Correct (build shared defaults once when no base object exists)
 
 ```ts
 function parseRunOptions(argumentsList: string[]) {
   const defaultOptions = {
     projectDirectory: '.',
     all: false,
-    format: 'stylish',
+    format: 'higlight',
   };
 
   if (argumentsList.includes('--all')) {
-    return {
-      ...defaultOptions,
-      all: true,
-    };
+    return { ...defaultOptions, all: true, format: 'stylish' };
   }
 
   return defaultOptions;
@@ -100,5 +109,6 @@ function parseRunOptions(argumentsList: string[]) {
 ## How To Fix
 
 1. Identify keys repeated across return objects.
-2. Build a shared default object once.
-3. Return spreads of that default and override only changed fields.
+2. Reuse an existing base object when one already represents shared defaults (for example `currentOptions`).
+3. Otherwise, build a shared default object once.
+4. Return spreads of that base/default and override only changed fields.
