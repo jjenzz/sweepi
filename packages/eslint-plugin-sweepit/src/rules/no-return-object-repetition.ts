@@ -162,7 +162,7 @@ const rule: Rule.RuleModule = {
     ],
     messages: {
       preferSharedDefaults:
-        'Multiple object return statements repeat many keys ({{sharedKeys}} shared, {{overlapPercent}}% overlap). Construct shared defaults once and override only differing fields.',
+        'Multiple object return statements repeat many keys ({{sharedKeys}} shared, {{overlapPercent}}% overlap).',
     },
   },
   create(context: Readonly<Rule.RuleContext>) {
