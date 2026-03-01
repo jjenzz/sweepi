@@ -1,3 +1,34 @@
+# v0.0.21 (Sun Mar 01 2026)
+
+#### 💥 Breaking Change
+
+- feat(sweepi): require explicit lint targets [#60](https://github.com/jjenzz/sweepi/pull/60) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🚀 Enhancement
+
+- feat(rules): add no-return-object-repetition rule [#62](https://github.com/jjenzz/sweepi/pull/62) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🐛 Bug Fix
+
+- fix(no-return-object-repetition): count nested keys in overlap threshold [#63](https://github.com/jjenzz/sweepi/pull/63) ([@jjenzz](https://github.com/jjenzz))
+- fix(no-external-binding-mutation): ignore global built-ins [#61](https://github.com/jjenzz/sweepi/pull/61) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🏠 Housekeeping
+
+- Skill agents.md copy improvements [#59](https://github.com/jjenzz/sweepi/pull/59) ([@jjenzz](https://github.com/jjenzz))
+- Skill wording improvements [#58](https://github.com/jjenzz/sweepi/pull/58) ([@jjenzz](https://github.com/jjenzz))
+
+#### 📝 Documentation
+
+- docs(eslint-plugin-sweepit): document missing rule table entries [#65](https://github.com/jjenzz/sweepi/pull/65) ([@jjenzz](https://github.com/jjenzz))
+- fix(no-return-object-repetition): prefer base-object reuse guidance [#64](https://github.com/jjenzz/sweepi/pull/64) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.20 (Sat Feb 28 2026)
 
 #### 🚀 Enhancement
