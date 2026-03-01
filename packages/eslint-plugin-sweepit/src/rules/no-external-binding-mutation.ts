@@ -153,6 +153,13 @@ function isImportedVariable(variable: VariableLike | null): boolean {
   return defs.some((definition) => definition.type === 'ImportBinding');
 }
 
+function isGlobalVariable(variable: VariableLike | null): boolean {
+  if (!variable) return false;
+  const defs = variable.defs ?? [];
+  if (defs.length > 0) return false;
+  return variable.scope.type === 'global';
+}
+
 function getIdentifier(node: any): IdentifierLike | null {
   if (node?.type !== 'Identifier' || typeof node?.name !== 'string') return null;
   return node as IdentifierLike;
@@ -430,6 +437,7 @@ const rule: Rule.RuleModule = {
         if (!identifier) return;
         const variable = resolveVariable(sourceCode, identifier);
         if (isImportedVariable(variable)) return;
+        if (isGlobalVariable(variable)) return;
         if (!shouldReportIdentifier(identifier, functionNode)) return;
         if (receiverIsReadonlyTyped(memberExpression.object)) return;
         reportReadonlyRequired(memberExpression.object, identifier);
