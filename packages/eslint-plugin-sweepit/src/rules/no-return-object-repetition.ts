@@ -49,12 +49,27 @@ function getNodeKey(node: Rule.Node): string {
   return `${line}:${column}`;
 }
 
-function getObjectKeys(objectExpression: Rule.Node): Set<string> {
-  if (objectExpression.type !== 'ObjectExpression') {
-    return new Set<string>();
+function getPropertyKeyName(propertyKey: Rule.Node | undefined): string | null {
+  if (!propertyKey) return null;
+  if (propertyKey.type === 'Identifier') {
+    const identifierKey = propertyKey as Rule.Node & { name?: string };
+    return identifierKey.name ?? null;
   }
+  if (propertyKey.type === 'Literal') {
+    const literalKey = propertyKey as Rule.Node & { value?: unknown };
+    if (typeof literalKey.value === 'string' || typeof literalKey.value === 'number') {
+      return String(literalKey.value);
+    }
+  }
+  return null;
+}
 
-  const keySet = new Set<string>();
+function collectObjectKeys(
+  objectExpression: Rule.Node,
+  keySet: Set<string>,
+  parentPath: string | null = null,
+): void {
+  if (objectExpression.type !== 'ObjectExpression') return;
   const objectNode = objectExpression as Rule.Node & {
     properties?: Rule.Node[];
   };
@@ -65,25 +80,24 @@ function getObjectKeys(objectExpression: Rule.Node): Set<string> {
     const objectProperty = property as Rule.Node & {
       computed?: boolean;
       key?: Rule.Node;
+      value?: Rule.Node;
     };
     if (objectProperty.computed) continue;
-    const key = objectProperty.key;
-    if (!key) continue;
-    if (key.type === 'Identifier') {
-      const identifierKey = key as Rule.Node & { name?: string };
-      if (identifierKey.name) {
-        keySet.add(identifierKey.name);
-      }
-      continue;
-    }
-    if (key.type === 'Literal') {
-      const literalKey = key as Rule.Node & { value?: unknown };
-      if (typeof literalKey.value === 'string' || typeof literalKey.value === 'number') {
-        keySet.add(String(literalKey.value));
-      }
+    const keyName = getPropertyKeyName(objectProperty.key);
+    if (!keyName) continue;
+
+    const keyPath = parentPath ? `${parentPath}.${keyName}` : keyName;
+    keySet.add(keyPath);
+
+    if (objectProperty.value?.type === 'ObjectExpression') {
+      collectObjectKeys(objectProperty.value, keySet, keyPath);
     }
   }
+}
 
+function getObjectKeys(objectExpression: Rule.Node): Set<string> {
+  const keySet = new Set<string>();
+  collectObjectKeys(objectExpression, keySet);
   return keySet;
 }
 

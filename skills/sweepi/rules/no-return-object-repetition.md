@@ -12,9 +12,12 @@ Using shared defaults and targeted overrides makes differences explicit.
 
 This rule inspects object return statements inside the same function.
 
+For key counting, it includes both top-level and nested object keys.
+Nested keys are compared by path (for example `meta`, `meta.id`, `meta.name`).
+
 It reports when at least one pair of object returns has both:
 
-- shared keys `>= minSharedKeys`, and
+- shared keys `>= minSharedKeys` (including nested key paths), and
 - overlap ratio `>= minOverlapRatio`
 
 Overlap ratio is:
