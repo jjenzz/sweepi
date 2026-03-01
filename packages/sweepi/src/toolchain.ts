@@ -74,85 +74,167 @@ interface RunSweepiOptions {
   homeDirectory?: string;
   runLintCommand?: (command: string, args: string[], cwd: string) => Promise<number>;
   runSkillInstallCommand?: (command: string, args: string[], cwd: string) => Promise<void>;
-  listChangedFiles?: (projectDirectory: string) => Promise<string[]>;
   onStatus?: (message: string) => void;
   all?: boolean;
+  files?: string[];
 }
 
 interface SkillMetadata {
   updatedAt: string;
 }
 
+interface ToolchainPaths {
+  toolchainDirectory: string;
+  packageJsonPath: string;
+  configPath: string;
+  eslintBinaryPath: string;
+  pluginPackagePath: string;
+}
+
+interface InstallFailureDetails {
+  command: string;
+  args: readonly string[];
+  cwd: string;
+  code: number | null;
+  stderrOutput: string;
+}
+
 async function initializeToolchain(
-  options: InitializeToolchainOptions = {},
+  options: Readonly<InitializeToolchainOptions> = {},
 ): Promise<InitializeToolchainResult> {
   assertSupportedNodeVersion();
 
   const homeDirectory = options.homeDirectory ?? os.homedir();
-  const toolchainDirectory = path.join(homeDirectory, TOOLCHAIN_DIR_NAME);
-  const packageJsonPath = path.join(toolchainDirectory, TOOLCHAIN_PACKAGE_JSON_NAME);
-  const configPath = path.join(toolchainDirectory, TOOLCHAIN_CONFIG_NAME);
+  const toolchainPaths = resolveToolchainPaths(homeDirectory);
   const onStatus = options.onStatus;
   const forceReset = options.forceReset === true;
 
   if (forceReset) {
-    onStatus?.(`Removing existing Sweepi toolchain in ${toolchainDirectory}`);
-    await fs.rm(toolchainDirectory, { recursive: true, force: true });
+    onStatus?.(`Removing existing Sweepi toolchain in ${toolchainPaths.toolchainDirectory}`);
+    await fs.rm(toolchainPaths.toolchainDirectory, { recursive: true, force: true });
   }
 
-  await fs.mkdir(toolchainDirectory, { recursive: true });
-  await ensureFile(packageJsonPath, TOOLCHAIN_PACKAGE_JSON_CONTENT);
-  await ensureFile(configPath, TOOLCHAIN_CONFIG_CONTENT);
+  await ensureToolchainFiles(toolchainPaths);
 
-  const eslintBinaryPath = path.join(toolchainDirectory, 'node_modules', '.bin', 'eslint');
-  const pluginPackagePath = path.join(
-    toolchainDirectory,
-    'node_modules',
-    'eslint-plugin-sweepit',
-    'package.json',
-  );
-
-  const eslintInstalled = await pathExists(eslintBinaryPath);
-  const pluginInstalled = await pathExists(pluginPackagePath);
-  const installRequired = !eslintInstalled || !pluginInstalled;
-
+  const installRequired = await isToolchainInstallRequired(toolchainPaths);
   if (installRequired) {
-    onStatus?.(`Initializing Sweepi toolchain in ${toolchainDirectory}`);
-    onStatus?.('Installing eslint-plugin-sweepit and peer dependencies...');
-
-    const packageVersion = await readCurrentPackageVersion();
-    const installArguments = [
-      'install',
-      '--no-save',
-      '--no-audit',
-      '--no-fund',
-      '--no-package-lock',
-      `eslint-plugin-sweepit@${packageVersion}`,
-    ];
-    const runInstallCommand = options.runInstallCommand ?? runInstallCommandWithNpm;
-    const installStartedAt = Date.now();
-    await runInstallCommand('npm', installArguments, toolchainDirectory);
-    const installDurationSeconds = ((Date.now() - installStartedAt) / 1000).toFixed(1);
-    onStatus?.(`Installed toolchain dependencies in ${installDurationSeconds}s`);
+    await installToolchainDependencies(options, toolchainPaths.toolchainDirectory);
   } else {
-    onStatus?.(`Reusing existing Sweepi toolchain in ${toolchainDirectory}`);
+    onStatus?.(`Reusing existing Sweepi toolchain in ${toolchainPaths.toolchainDirectory}`);
   }
 
-  await ensureSweepiSkillIsFresh(toolchainDirectory, {
+  await ensureSweepiSkillIsFresh(toolchainPaths.toolchainDirectory, {
     runSkillInstallCommand: options.runSkillInstallCommand,
     onStatus,
   });
 
   return {
-    toolchainDirectory,
+    toolchainDirectory: toolchainPaths.toolchainDirectory,
     installedDependencies: installRequired,
   };
 }
 
 async function runSweepi(
   projectDirectory: string,
-  options: RunSweepiOptions = {},
+  options: Readonly<RunSweepiOptions> = {},
 ): Promise<number> {
+  const resolvedProjectDirectory = await resolveProjectDirectory(projectDirectory);
+  const homeDirectory = options.homeDirectory ?? os.homedir();
+  const toolchainPaths = resolveToolchainPaths(homeDirectory);
+  const runLintCommand = options.runLintCommand ?? runLintCommandWithExecutable;
+  const onStatus = options.onStatus;
+  const lintAllFiles = options.all === true;
+  const lintFiles = options.files ?? [];
+
+  await assertToolchainIsInitialized(toolchainPaths);
+  await refreshSkillWithWarning(toolchainPaths.toolchainDirectory, options, onStatus);
+
+  onStatus?.(`Using Sweepi toolchain in ${toolchainPaths.toolchainDirectory}`);
+
+  if (!lintAllFiles && lintFiles.length === 0) {
+    onStatus?.('No lint targets provided. Pass --file <path> (repeatable) or use --all.');
+    return 0;
+  }
+
+  if (lintFiles.length > 0) {
+    const resolvedLintFiles = lintFiles.map((filePath) =>
+      path.resolve(resolvedProjectDirectory, filePath),
+    );
+
+    const lintArguments = [
+      '--config',
+      toolchainPaths.configPath,
+      '--no-error-on-unmatched-pattern',
+      ...resolvedLintFiles,
+    ];
+
+    return runLintCommand(toolchainPaths.eslintBinaryPath, lintArguments, resolvedProjectDirectory);
+  }
+
+  const lintAllArguments = [
+    '--config',
+    toolchainPaths.configPath,
+    resolvedProjectDirectory,
+  ];
+  return runLintCommand(toolchainPaths.eslintBinaryPath, lintAllArguments, resolvedProjectDirectory);
+}
+
+function resolveToolchainPaths(homeDirectory: string): ToolchainPaths {
+  const toolchainDirectory = path.join(homeDirectory, TOOLCHAIN_DIR_NAME);
+
+  return {
+    toolchainDirectory,
+    packageJsonPath: path.join(toolchainDirectory, TOOLCHAIN_PACKAGE_JSON_NAME),
+    configPath: path.join(toolchainDirectory, TOOLCHAIN_CONFIG_NAME),
+    eslintBinaryPath: path.join(toolchainDirectory, 'node_modules', '.bin', 'eslint'),
+    pluginPackagePath: path.join(
+      toolchainDirectory,
+      'node_modules',
+      'eslint-plugin-sweepit',
+      'package.json',
+    ),
+  };
+}
+
+async function ensureToolchainFiles(toolchainPaths: ToolchainPaths): Promise<void> {
+  await fs.mkdir(toolchainPaths.toolchainDirectory, { recursive: true });
+  await ensureFile(toolchainPaths.packageJsonPath, TOOLCHAIN_PACKAGE_JSON_CONTENT);
+  await ensureFile(toolchainPaths.configPath, TOOLCHAIN_CONFIG_CONTENT);
+}
+
+async function isToolchainInstallRequired(toolchainPaths: ToolchainPaths): Promise<boolean> {
+  const eslintInstalled = await pathExists(toolchainPaths.eslintBinaryPath);
+  const pluginInstalled = await pathExists(toolchainPaths.pluginPackagePath);
+  return !eslintInstalled || !pluginInstalled;
+}
+
+async function installToolchainDependencies(
+  options: Readonly<InitializeToolchainOptions>,
+  toolchainDirectory: string,
+): Promise<void> {
+  const onStatus = options.onStatus;
+
+  onStatus?.(`Initializing Sweepi toolchain in ${toolchainDirectory}`);
+  onStatus?.('Installing eslint-plugin-sweepit and peer dependencies...');
+
+  const packageVersion = await readCurrentPackageVersion();
+  const installArguments = [
+    'install',
+    '--no-save',
+    '--no-audit',
+    '--no-fund',
+    '--no-package-lock',
+    `eslint-plugin-sweepit@${packageVersion}`,
+  ];
+
+  const runInstallCommand = options.runInstallCommand ?? runInstallCommandWithNpm;
+  const installStartedAt = Date.now();
+  await runInstallCommand('npm', installArguments, toolchainDirectory);
+  const installDurationSeconds = ((Date.now() - installStartedAt) / 1000).toFixed(1);
+  onStatus?.(`Installed toolchain dependencies in ${installDurationSeconds}s`);
+}
+
+async function resolveProjectDirectory(projectDirectory: string): Promise<string> {
   const resolvedProjectDirectory = path.resolve(projectDirectory);
   const projectDirectoryStats = await fs.stat(resolvedProjectDirectory).catch(() => null);
 
@@ -160,31 +242,26 @@ async function runSweepi(
     throw new Error(`Project directory does not exist: ${resolvedProjectDirectory}`);
   }
 
-  const homeDirectory = options.homeDirectory ?? os.homedir();
-  const toolchainDirectory = path.join(homeDirectory, TOOLCHAIN_DIR_NAME);
-  const eslintBinaryPath = path.join(toolchainDirectory, 'node_modules', '.bin', 'eslint');
-  const pluginPackagePath = path.join(
-    toolchainDirectory,
-    'node_modules',
-    'eslint-plugin-sweepit',
-    'package.json',
-  );
-  const configPath = path.join(toolchainDirectory, TOOLCHAIN_CONFIG_NAME);
-  const runLintCommand = options.runLintCommand ?? runLintCommandWithExecutable;
-  const listChangedFiles = options.listChangedFiles ?? listChangedFilesFromGit;
-  const onStatus = options.onStatus;
-  const lintAllFiles = options.all === true;
+  return resolvedProjectDirectory;
+}
 
-  const eslintInstalled = await pathExists(eslintBinaryPath);
-  const pluginInstalled = await pathExists(pluginPackagePath);
-  const configInstalled = await pathExists(configPath);
+async function assertToolchainIsInitialized(toolchainPaths: ToolchainPaths): Promise<void> {
+  const eslintInstalled = await pathExists(toolchainPaths.eslintBinaryPath);
+  const pluginInstalled = await pathExists(toolchainPaths.pluginPackagePath);
+  const configInstalled = await pathExists(toolchainPaths.configPath);
 
   if (!eslintInstalled || !pluginInstalled || !configInstalled) {
     throw new Error(
-      `Sweepi toolchain is not initialized in ${toolchainDirectory}. Run "sweepi init" first.`,
+      `Sweepi toolchain is not initialized in ${toolchainPaths.toolchainDirectory}. Run "sweepi init" first.`,
     );
   }
+}
 
+async function refreshSkillWithWarning(
+  toolchainDirectory: string,
+  options: Readonly<RunSweepiOptions>,
+  onStatus: ((message: string) => void) | undefined,
+): Promise<void> {
   try {
     await ensureSweepiSkillIsFresh(toolchainDirectory, {
       runSkillInstallCommand: options.runSkillInstallCommand,
@@ -194,84 +271,6 @@ async function runSweepi(
     const message = error instanceof Error ? error.message : String(error);
     onStatus?.(`Warning: Failed to refresh Sweepi LLM skill. Continuing lint run.\n${message}`);
   }
-
-  onStatus?.(`Using Sweepi toolchain in ${toolchainDirectory}`);
-
-  if (!lintAllFiles) {
-    const changedFiles = await listChangedFiles(resolvedProjectDirectory);
-    if (changedFiles.length === 0) {
-      onStatus?.('No changed files to lint.');
-      return 0;
-    }
-
-    return runLintCommand(
-      eslintBinaryPath,
-      [
-        '--config',
-        configPath,
-        '--no-error-on-unmatched-pattern',
-        ...changedFiles.map((filePath) => path.resolve(resolvedProjectDirectory, filePath)),
-      ],
-      resolvedProjectDirectory,
-    );
-  }
-
-  return runLintCommand(
-    eslintBinaryPath,
-    ['--config', configPath, resolvedProjectDirectory],
-    resolvedProjectDirectory,
-  );
-}
-
-async function listChangedFilesFromGit(projectDirectory: string): Promise<string[]> {
-  const [unstagedFiles, stagedFiles, untrackedFiles] = await Promise.all([
-    runGitListCommand(projectDirectory, ['diff', '--name-only', '--diff-filter=ACMR']),
-    runGitListCommand(projectDirectory, ['diff', '--cached', '--name-only', '--diff-filter=ACMR']),
-    runGitListCommand(projectDirectory, ['ls-files', '--others', '--exclude-standard']),
-  ]);
-
-  return Array.from(new Set([...unstagedFiles, ...stagedFiles, ...untrackedFiles]));
-}
-
-function runGitListCommand(projectDirectory: string, args: string[]): Promise<string[]> {
-  return new Promise<string[]>((resolve, reject) => {
-    const child = childProcess.spawn('git', args, {
-      cwd: projectDirectory,
-      stdio: ['ignore', 'pipe', 'pipe'],
-      env: process.env,
-    });
-    let output = '';
-    let errorOutput = '';
-
-    child.stdout.on('data', (chunk) => {
-      output += chunk.toString();
-    });
-
-    child.stderr.on('data', (chunk) => {
-      errorOutput += chunk.toString();
-    });
-
-    child.on('error', (error) => {
-      reject(error);
-    });
-
-    child.on('exit', (code) => {
-      if (code !== 0) {
-        reject(
-          new Error(
-            `Failed to list changed files with "git ${args.join(' ')}" in ${projectDirectory}.\n${errorOutput.trim()}`,
-          ),
-        );
-        return;
-      }
-
-      const files = output
-        .split('\n')
-        .map((line) => line.trim())
-        .filter((line) => line.length > 0);
-      resolve(files);
-    });
-  });
 }
 
 async function ensureFile(filePath: string, content: string): Promise<void> {
@@ -284,10 +283,10 @@ async function ensureFile(filePath: string, content: string): Promise<void> {
 
 async function ensureSweepiSkillIsFresh(
   toolchainDirectory: string,
-  options: {
+  options: Readonly<{
     runSkillInstallCommand?: (command: string, args: string[], cwd: string) => Promise<void>;
     onStatus?: (message: string) => void;
-  } = {},
+  }> = {},
 ): Promise<void> {
   const metadataPath = path.join(toolchainDirectory, SKILL_METADATA_NAME);
   const metadata = await readSkillMetadata(metadataPath);
@@ -300,7 +299,8 @@ async function ensureSweepiSkillIsFresh(
   options.onStatus?.('Updating Sweepi LLM skill...');
   const runSkillInstallCommand = options.runSkillInstallCommand ?? runInstallCommandWithNpm;
   await runSkillInstallCommand('npx', SKILL_INSTALL_ARGS, toolchainDirectory);
-  await writeSkillMetadata(metadataPath, { updatedAt: new Date().toISOString() });
+  const updatedAt = new Date().toISOString();
+  await writeSkillMetadata(metadataPath, { updatedAt });
   options.onStatus?.('Updated Sweepi LLM skill');
 }
 
@@ -322,7 +322,8 @@ async function readSkillMetadata(filePath: string): Promise<SkillMetadata | null
 }
 
 async function writeSkillMetadata(filePath: string, metadata: SkillMetadata): Promise<void> {
-  await fs.writeFile(`${filePath}`, `${JSON.stringify(metadata, null, 2)}\n`, 'utf8');
+  const metadataText = JSON.stringify(metadata, null, 2);
+  await fs.writeFile(filePath, `${metadataText}\n`, 'utf8');
 }
 
 async function pathExists(filePath: string): Promise<boolean> {
@@ -347,8 +348,8 @@ async function runInstallCommandWithNpm(
     });
     let stderrOutput = '';
 
-    child.stderr.on('data', (chunk) => {
-      const text = chunk.toString();
+    child.stderr.on('data', (chunk: Buffer | string) => {
+      const text = String(chunk);
       stderrOutput += text;
       process.stderr.write(text);
     });
@@ -363,7 +364,14 @@ async function runInstallCommandWithNpm(
         return;
       }
 
-      reject(createInstallFailureError(command, args, cwd, code, stderrOutput));
+      const installFailureError = createInstallFailureError({
+        command,
+        args,
+        cwd,
+        code,
+        stderrOutput,
+      });
+      reject(installFailureError);
     });
   });
 }
@@ -408,28 +416,25 @@ function assertSupportedNodeVersion(): void {
   }
 }
 
-function createInstallFailureError(
-  command: string,
-  args: string[],
-  cwd: string,
-  code: number | null,
-  stderrOutput: string,
-): Error {
-  const lines = [
-    `Failed to initialize Sweepi toolchain (exit code ${String(code)}).`,
-    `Command: ${command} ${args.join(' ')}`,
-    `Working directory: ${cwd}`,
+function createInstallFailureError(details: InstallFailureDetails): Error {
+  const baseLines = [
+    `Failed to initialize Sweepi toolchain (exit code ${String(details.code)}).`,
+    `Command: ${details.command} ${details.args.join(' ')}`,
+    `Working directory: ${details.cwd}`,
   ];
 
-  if (stderrOutput.length > 0) {
-    lines.push('See npm output above for full error details.');
-  }
+  const lines =
+    details.stderrOutput.length > 0
+      ? [...baseLines, 'See npm output above for full error details.']
+      : baseLines;
 
   return new Error(lines.join('\n'));
 }
 
 async function readCurrentPackageVersion(): Promise<string> {
-  const filePath = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..', 'package.json');
+  const moduleFilePath = fileURLToPath(import.meta.url);
+  const moduleDirectoryPath = path.dirname(moduleFilePath);
+  const filePath = path.resolve(moduleDirectoryPath, '..', 'package.json');
   const packageJson = await fs.readFile(filePath, 'utf8');
   const parsedPackageJson = JSON.parse(packageJson) as { version?: string };
 

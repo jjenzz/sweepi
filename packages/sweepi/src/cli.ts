@@ -36,6 +36,7 @@ async function run(): Promise<void> {
   const lintExitCode = await runSweepi(parsedRunOptions.projectDirectory, {
     onStatus: logStatus,
     all: parsedRunOptions.all,
+    files: parsedRunOptions.files,
   });
   process.exitCode = lintExitCode;
 }
@@ -43,10 +44,12 @@ async function run(): Promise<void> {
 function printHelp(): void {
   process.stdout.write(`Usage:
   sweepi [project-dir] [--all]
+  sweepi [project-dir] --file <path> [--file <path> ...]
   sweepi init
 
 Commands:
-  [project-dir]    Run eslint on changed ts/tsx files (default: current directory)
+  [project-dir]    Project directory to lint (default: current directory)
+  --file <path>    Lint specific file(s), repeatable
   --all            Run eslint on all ts/tsx files
   init [--force, -f]    Create ~/.sweepi and install rules
 
@@ -77,33 +80,118 @@ function parseForceResetOption(argumentsList: string[]): boolean {
 interface ParsedRunOptions {
   projectDirectory: string;
   all: boolean;
+  files: string[];
 }
 
-function parseRunOptions(argumentsList: string[]): ParsedRunOptions {
-  let projectDirectory = '.';
-  let all = false;
+interface ParsedRunArgumentResult {
+  nextOptions: ParsedRunOptions;
+  consumedNextArgument: boolean;
+}
 
-  for (const argument of argumentsList) {
-    if (argument === '--all') {
-      all = true;
-      continue;
+interface ParsedFileArgumentResult {
+  filePath: string;
+  consumedNextArgument: boolean;
+}
+
+function isFileArgument(argument: string): boolean {
+  return argument === '--file' || argument.startsWith('--file=');
+}
+
+function parseFileArgument(
+  argument: string,
+  nextArgument: string | undefined,
+): ParsedFileArgumentResult {
+  if (argument === '--file') {
+    if (nextArgument === undefined || nextArgument.startsWith('-')) {
+      throw new Error('Missing value for "--file". Try "sweepi --help".');
     }
 
-    if (argument.startsWith('-')) {
-      throw new Error(`Unknown flag "${argument}". Try "sweepi --help".`);
-    }
+    return {
+      filePath: nextArgument,
+      consumedNextArgument: true,
+    };
+  }
 
-    if (projectDirectory !== '.') {
-      throw new Error(`Unexpected argument "${argument}". Try "sweepi --help".`);
-    }
-
-    projectDirectory = argument;
+  const filePath = argument.slice('--file='.length);
+  if (filePath.length === 0) {
+    throw new Error('Missing value for "--file". Try "sweepi --help".');
   }
 
   return {
-    projectDirectory,
-    all,
+    filePath,
+    consumedNextArgument: false,
   };
+}
+
+function parseRunArgument(
+  argument: string,
+  nextArgument: string | undefined,
+  currentOptions: ParsedRunOptions,
+): ParsedRunArgumentResult {
+  if (argument === '--all') {
+    return {
+      nextOptions: {
+        ...currentOptions,
+        all: true,
+      },
+      consumedNextArgument: false,
+    };
+  }
+
+  if (isFileArgument(argument)) {
+    const parsedFileArgument = parseFileArgument(argument, nextArgument);
+
+    return {
+      nextOptions: {
+        ...currentOptions,
+        files: [...currentOptions.files, parsedFileArgument.filePath],
+      },
+      consumedNextArgument: parsedFileArgument.consumedNextArgument,
+    };
+  }
+
+  if (argument.startsWith('-')) {
+    throw new Error(`Unknown flag "${argument}". Try "sweepi --help".`);
+  }
+
+  if (currentOptions.projectDirectory !== '.') {
+    throw new Error(`Unexpected argument "${argument}". Try "sweepi --help".`);
+  }
+
+  return {
+    nextOptions: {
+      ...currentOptions,
+      projectDirectory: argument,
+    },
+    consumedNextArgument: false,
+  };
+}
+
+function parseRunOptions(argumentsList: string[]): ParsedRunOptions {
+  let parsedOptions: ParsedRunOptions = {
+    projectDirectory: '.',
+    all: false,
+    files: [],
+  };
+
+  for (let argumentIndex = 0; argumentIndex < argumentsList.length; argumentIndex += 1) {
+    const argument = argumentsList[argumentIndex];
+    if (argument === undefined) continue;
+
+    const nextArgument = argumentsList[argumentIndex + 1];
+    const parseResult = parseRunArgument(argument, nextArgument, parsedOptions);
+    parsedOptions = parseResult.nextOptions;
+
+    if (parseResult.consumedNextArgument) {
+      argumentIndex += 1;
+    }
+  }
+
+  if (parsedOptions.all && parsedOptions.files.length > 0) {
+    throw new Error('Flags "--all" and "--file" cannot be used together. Try "sweepi --help".');
+  }
+
+  return parsedOptions;
 }
 
 try {
