@@ -92,6 +92,30 @@ describe('no-return-object-repetition', () => {
       },
       {
         code: `
+        function createResult(success: boolean) {
+          if (success) {
+            return {
+              status: 'ok',
+              meta: {
+                id: 1,
+                name: 'build',
+              },
+            };
+          }
+
+          return {
+            status: 'error',
+            meta: {
+              id: 2,
+              name: 'build',
+            },
+          };
+        }
+        `,
+        errors: [{ messageId: 'preferSharedDefaults' }, { messageId: 'preferSharedDefaults' }],
+      },
+      {
+        code: `
         function chooseTarget(includeDrafts: boolean) {
           if (includeDrafts) {
             return { includeDrafts, source: 'all', limit: 20 };
