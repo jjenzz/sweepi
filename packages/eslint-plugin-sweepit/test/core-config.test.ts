@@ -65,5 +65,6 @@ describe('plugin:sweepit/core', () => {
         allowCallPatterns: ['*.entries', '*.values', '*.keys'],
       },
     ]);
+    expect(coreConfig.rules?.['sweepit/no-return-object-repetition']).toBe('error');
   });
 });

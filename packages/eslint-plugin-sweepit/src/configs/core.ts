@@ -43,6 +43,7 @@ function createCoreConfig(sweepitPlugin: ESLint.Plugin): Linter.Config[] {
           allowCallPatterns: ['*.entries', '*.values', '*.keys'],
         },
       ],
+      'sweepit/no-return-object-repetition': 'error',
     },
   };
 
