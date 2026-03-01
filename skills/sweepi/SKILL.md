@@ -1,62 +1,43 @@
 ---
 name: sweepi
-description: Orchestrate Sweepi linting via a dedicated sub-agent, apply rule-aligned fixes, and report outcomes. Trigger when asked to run sweepi or linting, and before proposing commits.
+description: Required orchestrater for linting using a dedicated sub-agent. Trigger when asked to run sweepi/linting + fixes, and before proposing commits.
 ---
 
-# Sweepi Skill (Orchestrator)
+# Sweepi Orchestrator
 
-This skill is for the **parent agent**. It must delegate lint execution and lint-fix loops to a **sub-agent**.
+Parent orchestrates only. Parent does not run Sweepi directly.
 
-## When to run
+## Trigger
 
-Run this skill when:
+- User asks for `sweepi` or linting
+- Parent is preparing to propose a commit
+- Changed files may violate lint rules
 
-1. The user asks to run `sweepi` or linting.
-2. You are about to propose a commit.
-3. You changed files that may trigger lint rules.
+## Flow
 
-## Non-Negotiable Execution Rule
+`COLLECT_FILES -> LINT_SUBAGENT -> RESULT`
 
-- The parent agent **must not** run `sweepi` directly.
-- Linting and lint-fix work **must** be performed by a dedicated sub-agent.
-- Required sub-agent type: `shell`, STOP if shell is unavailable.
+- `COLLECT_FILES`: determine lint scope (`changed files` or `--all`)
+- `LINT_SUBAGENT`: invoke lint sub-agent
+- `RESULT`:
+  - `CLEAN` -> report success
+  - `BLOCKED` -> retry with clarified scope or escalate to user with blocker details
 
-## Workflow
+## Sub-Agent Invocation Contract
 
-1. Gather list of changed file paths `git diff --name-only` or `all` if linting everything.
-1. Launch and prompt lint sub-agent with Required sub-agent lint prompt.
-1. Wait for sub-agent report.
-1. If blockers remain, either:
-   - re-run sub-agent with narrowed instructions, or
-   - escalate to user when docs are missing/ambiguous or safe fix path is unavailable.
-1. Summarize final status for user (fixed rules, blockers, final lint state).
+Parent prompt to lint sub-agent MUST include:
 
-## Required sub-agent lint prompt
+`Load and obey role instructions in ./AGENTS.md`
 
-Pass this prompt to the lint sub-agent (substitue `--file "<path-one>" --file "<path-two>"`):
+And must specify lint scope:
 
-```
-Run Sweepi linting, resolve violations according to rule docs, re-run until clean or blocked.
+- `sweepi . --file "<path>" ...` for changed files
+- `sweepi . --all` when linting everything
 
-- Load and obey sweepi skill `AGENTS.md`.
-- Run `sweepi . --file "<path-one>" --file "<path-two>"` (use `npx` if not installed globally)
-- If the user asks to lint everything, use `--all` instead of `--file`.
-- DO NOT suppress rules, disable linting, or make speculative fixes without docs.
-- Return: CLEAN or BLOCKED with structured report.
-```
+Role instructions path is relative to this skill root.
 
-## Completion criteria
+## Guardrails
 
-This skill is complete only when one of the following is true:
-
-1. Sweepi output is clean, or
-2. A blocker report is produced with explicit rule IDs, missing/ambiguous docs, and requested human decision.
-
-## Handoff format (parent → user)
-
-Include:
-
-1. Final lint status (clean/blocked)
-2. Rules fixed and rationale
-3. Any behavior/API impact (should be none unless approved)
-4. Remaining blockers and required decisions
+- Do not suppress rules or disable linting
+- Do not make speculative fixes without rule guidance/docs
+- Return only: `CLEAN` or `BLOCKED` with structured blockers
