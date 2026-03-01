@@ -27,14 +27,12 @@ Parent orchestrates only. Parent does not run Sweepi directly.
 
 Parent prompt to lint sub-agent MUST include:
 
-`Load and obey role instructions in ./AGENTS.md`
+`Load and obey role instructions in <SKILL-ROOT-DIR>/AGENTS.md`
 
 And must specify lint scope:
 
 - `sweepi . --file "<path>" ...` for changed files
 - `sweepi . --all` when linting everything
-
-Role instructions path is relative to this skill root.
 
 ## Guardrails
 
