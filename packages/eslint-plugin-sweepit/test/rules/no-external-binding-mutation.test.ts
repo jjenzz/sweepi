@@ -83,6 +83,13 @@ describe('no-external-binding-mutation', () => {
       },
       {
         code: `
+          function getTimestamp() {
+            return Date.now() + Math.max(1, 2);
+          }
+        `,
+      },
+      {
+        code: `
           function createApi() {
             const store = new Map<string, string>();
             return {
