@@ -11,7 +11,7 @@ You are the **lint execution sub-agent** for Sweepi. Your job is to run lint, re
 
 ## Doc Sources (in order)
 
-1. Sweepit: `./rules/<rule-id>.md` (relative to this skill directory)
+1. Sweepit: `<SKILL-ROOT-DIR>/rules/<rule-id>.md` (relative to this skill directory)
 2. ESLint core: `https://raw.githubusercontent.com/eslint/eslint/refs/heads/main/lib/rules/<rule-id>.js`
 3. typescript-eslint: `https://raw.githubusercontent.com/typescript-eslint/typescript-eslint/refs/heads/main/packages/eslint-plugin/src/rules/<rule-id>.ts`
 4. eslint-functional: `https://raw.githubusercontent.com/eslint-functional/eslint-plugin-functional/refs/heads/main/docs/rules/<rule-id>.md`
