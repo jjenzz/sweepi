@@ -144,7 +144,8 @@ function getUsedHandleNamesFromAttribute(
   const expression = getExpressionFromAttribute(attribute);
   if (!expression) return [];
 
-  return getHandleNamesFromText(sourceCode.getText(expression));
+  const expressionText = sourceCode.getText(expression);
+  return getHandleNamesFromText(expressionText);
 }
 
 function getOnPropNameFromIdentifierKey(key: Rule.Node): string | null {
@@ -192,7 +193,8 @@ function getUsedHandleNamesFromObjectPropertyValue(
 
   const propertyNode = property as Rule.Node & { value?: Rule.Node };
   if (!propertyNode.value) return [];
-  return getHandleNamesFromText(sourceCode.getText(propertyNode.value));
+  const propertyValueText = sourceCode.getText(propertyNode.value);
+  return getHandleNamesFromText(propertyValueText);
 }
 
 function getUsedHandleNamesFromSpreadAttribute(
@@ -208,6 +210,42 @@ function getUsedHandleNamesFromSpreadAttribute(
   }
 
   return usedNames;
+}
+
+function isEventListenerMethodName(name: string): boolean {
+  return name === 'addEventListener' || name === 'removeEventListener';
+}
+
+function getEventListenerMethodName(callee: Rule.Node | undefined): string | null {
+  if (!callee || callee.type !== 'MemberExpression') return null;
+  const calleeNode = callee as Rule.Node & { property?: Rule.Node; computed?: boolean };
+  if (calleeNode.computed) return null;
+  const property = asIdentifier(calleeNode.property ?? null);
+  if (!property) return null;
+  return property.name;
+}
+
+function getEventListenerCallbackArgument(callExpression: Rule.Node): Rule.Node | null {
+  if (callExpression.type !== 'CallExpression') return null;
+  const callNode = callExpression as Rule.Node & {
+    callee?: Rule.Node;
+    arguments?: Rule.Node[];
+  };
+
+  const eventListenerMethodName = getEventListenerMethodName(callNode.callee);
+  if (!eventListenerMethodName || !isEventListenerMethodName(eventListenerMethodName)) return null;
+  if (!callNode.arguments || callNode.arguments.length < 2) return null;
+  return callNode.arguments[1] ?? null;
+}
+
+function getUsedHandleNamesFromEventListenerCall(
+  node: Rule.Node,
+  sourceCode: Readonly<SourceCodeLike>,
+): string[] {
+  const callbackArgument = getEventListenerCallbackArgument(node);
+  if (!callbackArgument) return [];
+  const callbackText = sourceCode.getText(callbackArgument);
+  return getHandleNamesFromText(callbackText);
 }
 
 const rule: Rule.RuleModule = {
@@ -250,6 +288,10 @@ const rule: Rule.RuleModule = {
         const spreadAttribute = node as Rule.Node & { argument?: Rule.Node };
         const namesFromSpread = getUsedHandleNamesFromSpreadAttribute(spreadAttribute, sourceCode);
         usedNames = mergeUnique(usedNames, namesFromSpread);
+      },
+      CallExpression(node: Rule.Node) {
+        const namesFromEventListenerCall = getUsedHandleNamesFromEventListenerCall(node, sourceCode);
+        usedNames = mergeUnique(usedNames, namesFromEventListenerCall);
       },
       'Program:exit'() {
         for (const candidate of candidates) {
