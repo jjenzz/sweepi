@@ -1,3 +1,24 @@
+# v0.0.22 (Wed Mar 04 2026)
+
+#### 🚀 Enhancement
+
+- Add skill root path template [#68](https://github.com/jjenzz/sweepi/pull/68) ([@jjenzz](https://github.com/jjenzz))
+- Make skill more succinct [#66](https://github.com/jjenzz/sweepi/pull/66) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🐛 Bug Fix
+
+- fix(no-handle-prefix-utils): allow listener callbacks [#69](https://github.com/jjenzz/sweepi/pull/69) ([@jjenzz](https://github.com/jjenzz))
+
+#### 🏠 Housekeeping
+
+- Explicit root dir template for agents path [#67](https://github.com/jjenzz/sweepi/pull/67) ([@jjenzz](https://github.com/jjenzz))
+
+#### Authors: 1
+
+- Jenna Smith ([@jjenzz](https://github.com/jjenzz))
+
+---
+
 # v0.0.21 (Sun Mar 01 2026)
 
 #### 💥 Breaking Change
