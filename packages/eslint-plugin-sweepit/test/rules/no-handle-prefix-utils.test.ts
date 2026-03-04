@@ -28,6 +28,12 @@ describe('no-handle-prefix-utils', () => {
       'const handleSubmit = () => {}; <Form onSubmit={handleSubmit} />;',
       "import { useCallback } from 'react'; const handleClick = useCallback(() => {}, []); <button onClick={handleClick} />;",
       'const handleClick = () => {}; <button {...{ onClick: handleClick }} />;',
+      "const handleResize = () => {}; window.addEventListener('resize', handleResize);",
+      "const handleResize = () => {}; window.removeEventListener('resize', handleResize);",
+      "function handleResize() {}; window.addEventListener('resize', handleResize);",
+      "function handleResize() {}; window.removeEventListener('resize', handleResize);",
+      "let handleResize = () => {}; window.addEventListener('resize', handleResize);",
+      "let handleResize = () => {}; window.removeEventListener('resize', handleResize);",
     ],
     invalid: [
       {
