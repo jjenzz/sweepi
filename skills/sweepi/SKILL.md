@@ -15,13 +15,13 @@ Parent orchestrates only. Parent does not run Sweepi directly.
 
 ## Flow
 
-`COLLECT_FILES -> LINT_SUBAGENT -> RESULT`
+`COLLECT_FILES -> LINT -> RESULT`
 
 - `COLLECT_FILES`: determine lint scope (`changed files` or `--all`)
-- `LINT_SUBAGENT`: invoke lint sub-agent
+- `LINT`: invoke lint sub-agent
 - `RESULT`:
-  - `CLEAN` -> report success
-  - `BLOCKED` -> retry with clarified scope or escalate to user with blocker details
+  - `BLOCKED`: retry with clarified scope or escalate to user with blocker details
+  - `CLEAN`: report success
 
 ## Sub-Agent Invocation Contract
 
@@ -33,6 +33,8 @@ And must specify lint scope:
 
 - `sweepi . --file "<path>" ...` for changed files
 - `sweepi . --all` when linting everything
+
+Parent MUST NOT load lint instruction files into parent context.
 
 ## Guardrails
 
