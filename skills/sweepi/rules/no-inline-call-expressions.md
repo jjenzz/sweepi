@@ -1,11 +1,14 @@
 # Prefer extracted call results (`no-inline-call-expressions`)
 
 Prefer extracting function-call results into named variables instead of placing calls directly in loop headers or nested as function arguments.
+Use the extraction to make the value self-documenting: the name should describe the subject and intent, not just repeat the function verb.
 
 ## Why
 
 Inline call chains in control-flow and arguments make execution flow harder to scan.
 Extracting values first improves readability, naming clarity, and debugging.
+The extracted variable should explain what the value represents in business or domain terms.
+Prefer names like `formattedPrice` or `reportRows` over generic names like `formattedValue` or `result`.
 
 ## Rule Details
 
@@ -77,8 +80,8 @@ for (const report of getReports()) {
   // ...
 }
 
-consume(formatValue(input));
-consume(buildValue(loadValue()));
+displayPrice(formatValue(price));
+saveDraft(buildValue(loadDraft()));
 ```
 
 ### Correct
@@ -89,17 +92,17 @@ for (let i = 0; i < limit; i += 1) {
   // ...
 }
 
-const reports = getReports();
-for (const report of reports) {
+const reportQueue = getReports();
+for (const report of reportQueue) {
   // ...
 }
 
-const formattedValue = formatValue(input);
-consume(formattedValue);
+const formattedPrice = formatValue(price);
+displayPrice(formattedPrice);
 
-const loadedValue = loadValue();
-const builtValue = buildValue(loadedValue);
-consume(builtValue);
+const draftRecord = loadDraft();
+const draftPayload = buildValue(draftRecord);
+saveDraft(draftPayload);
 ```
 
 With default `allowCallPatterns`:
@@ -113,5 +116,6 @@ for (const [key, value] of Object.entries(record)) {
 ## How To Fix
 
 1. Compute values before the loop or call site.
-2. Name intermediate values according to intent.
-3. Keep iteration and invocation sites focused on behavior, not computation.
+2. Name intermediate values according to the subject and intent of the value.
+3. Avoid generic names like `value`, `result`, or `formattedValue` when a domain-specific name is available.
+4. Keep iteration and invocation sites focused on behavior, not computation.
